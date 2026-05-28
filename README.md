@@ -1,1 +1,1 @@
-# Kinetix.AI
+# Kinetix.AInpx create-next-app@latest . --ts --tailwind --app --src-dir --import-alias "@/*"
