@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "@types/googlepay": "^0.7.10"
+  }
+}
