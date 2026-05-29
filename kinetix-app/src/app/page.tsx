@@ -1,34 +1,74 @@
 "use client";
 import React, { useState } from 'react';
-import { useKinetix } from './context/KinetixContext'; // 1. Import the hook
+import { useKinetix } from './context/KinetixContext';
 
 export default function KinetixDashboard() {
   const [currentTab, setCurrentTab] = useState<'home' | 'web-gen' | 'saas-gen' | 'agent-gen' | 'billing' | 'docs' | 'api' | 'company'>('home');
   const [showGetStartedModal, setShowGetStartedModal] = useState(false);
   
-  // 2. Replace local state with global context values
-  const { credits, deductCredits } = useKinetix(); 
+  // Prompts & Engine Modes per Section
+  const [webPrompt, setWebPrompt] = useState('');
+  const [saasPrompt, setSaasPrompt] = useState('');
+  const [agentPrompt, setAgentPrompt] = useState('');
+  
+  const [activePlanMode, setActivePlanMode] = useState<'standard' | 'deep-reasoning'>('standard');
+  const [generationStep, setGenerationStep] = useState<'idle' | 'generating' | 'prototype' | 'deployed'>('idle');
+  const [generatedUrl, setGeneratedUrl] = useState('');
 
-  const handleRunTask = () => {
-    // 3. Use the global deduction logic
-    const success = deductCredits(25); 
-    if (success) {
-      alert("Task initialized! 25 Credits consumed from your 1,000 baseline.");
-    } else {
-      alert("Insufficient credits! Please upgrade your plan in the Subscription Hub.");
+  const { credits, deductCredits } = useKinetix();
+
+  // Unified Generation Pipeline Trigger
+  const handleStartGeneration = (promptText: string, type: 'web' | 'saas' | 'agent') => {
+    if (!promptText.trim()) {
+      alert("Please specify your architectural requirements in the prompt prompt matrix first.");
+      return;
+    }
+    
+    if (credits < 25) {
+      alert("Insufficient compute allocation tokens remaining. Please upgrade your status in the Subscription Hub.");
+      return;
+    }
+
+    setGenerationStep('generating');
+    deductCredits(25);
+
+    // Simulate Autonomous Pipeline Compilation
+    setTimeout(() => {
+      setGenerationStep('prototype');
+      const mockProjectHash = Math.random().toString(36).substring(7);
+      setGeneratedUrl(`https://${mockProjectHash}.base44.app`);
+    }, 3000);
+  };
+
+  // Upgraded UPI Payment Gateway Redirection Engine
+  const executeUPICheckout = (amount: number, planName: string) => {
+    const upiId = "geethavani16@oksbi";
+    const payeeName = "Tanish Suresh";
+    const transactionNote = `Kinetix.ai Subscription Activation [${planName}]`;
+    
+    // Standardized National Payments Corporation of India (NPCI) deep link parameters
+    const upiDeepLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}.00&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
+    
+    // Primary fallback browser destination path to ensure full operational runtime across devices
+    const googleSearchFallback = `https://www.google.com/search?q=${encodeURIComponent(`Pay ₹${amount} to ${upiId} for Kinetix ${planName}`)}`;
+    
+    alert(`Initializing secure transaction protocol link for ${planName}.\nAmount: ₹${amount}\nRouting target UPI ID: ${upiId}\n\nRedirecting to secure gateway...`);
+    
+    try {
+      window.location.href = upiDeepLink;
+    } catch (e) {
+      window.open(googleSearchFallback, '_blank');
     }
   };
 
-  // ... rest of your existing component layout code
-
   return (
-    <div className="flex h-screen w-screen bg-[#FDFDFD] text-[#0A0A0C] font-sans antialiased overflow-hidden">
+    <div className="flex h-screen w-screen bg-[#FDFDFD] text-[#0A0A0C] font-sans antialiased overflow-hidden selection:bg-neutral-200">
       
-      {/* LEFT DASHBOARD PANEL */}
-      <aside className="w-64 h-full bg-[#FFFFFF] border-r border-neutral-200/60 p-6 flex flex-col justify-between">
+      {/* LEFT DASHBOARD PANEL WITH INTERACTIVE MATRIX */}
+      <aside className="w-64 h-full bg-[#FFFFFF] border-r border-neutral-200/60 p-6 flex flex-col justify-between z-10">
         <div>
-          <div className="flex items-center gap-2 mb-8">
-            <div className="h-6 w-6 rounded-md bg-black flex items-center justify-center text-white font-bold text-xs">K</div>
+          <div className="flex items-center gap-2 mb-8 cursor-pointer" onClick={() => setCurrentTab('home')}>
+            <div className="h-6 w-6 rounded-md bg-black flex items-center justify-center text-white font-bold text-xs shadow-md">K</div>
             <span className="font-bold tracking-tight text-lg text-black">Kinetix.ai</span>
           </div>
 
@@ -45,10 +85,10 @@ export default function KinetixDashboard() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setCurrentTab(tab.id as any)}
-                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                onClick={() => { setCurrentTab(tab.id as any); setGenerationStep('idle'); }}
+                className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   currentTab === tab.id 
-                    ? 'bg-neutral-100 text-black shadow-sm' 
+                    ? 'bg-neutral-100 text-black shadow-sm font-semibold' 
                     : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900'
                 }`}
               >
@@ -58,165 +98,385 @@ export default function KinetixDashboard() {
           </nav>
         </div>
 
-        {/* METRICS DISK PANEL */}
-        <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200/50 space-y-2">
-          <div className="flex justify-between text-xs font-semibold text-neutral-500">
+        {/* COMPUTE BALANCE CAPACITOR PANEL */}
+        <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-200/60 shadow-sm">
+          <div className="flex justify-between text-xs font-semibold text-neutral-500 mb-1.5">
             <span>ALLOCATED CREDITS</span>
-            <span className="text-black">{credits} / 1000</span>
+            <span className="text-black font-bold">{credits} / 1000</span>
           </div>
           <div className="w-full bg-neutral-200 h-1.5 rounded-full overflow-hidden">
-            <div className="bg-black h-full transition-all duration-300" style={{ width: `${(credits / 1000) * 180}%` }}></div>
+            <div className="bg-black h-full transition-all duration-500" style={{ width: `${(credits / 1000) * 100}%` }}></div>
           </div>
-          <div className="text-[11px] text-neutral-400 mt-1">Each prototype runtime burns 25 credits.</div>
+          <div className="text-[10px] text-neutral-400 mt-2 leading-tight">Every runtime engine verification loop deducts exactly 25 credits.</div>
         </div>
       </aside>
 
-      {/* MAIN VIEWPORT MATRIX */}
+      {/* MAIN CONSOLE VIEWPORT MATRIX */}
       <main className="flex-1 h-full overflow-y-auto bg-[#FAFAFA] relative p-12">
         
-        {/* TAB 1: HOME PANEL */}
+        {/* TAB: HOME MATRIX */}
         {currentTab === 'home' && (
-          <div className="max-w-3xl space-y-12">
-            <div className="space-y-4">
-              <h1 className="text-5xl font-black tracking-tight text-black leading-none">THE NEXT GENERATION OF FULL-STACK ORCHESTRATION.</h1>
-              <p className="text-neutral-500 text-lg max-w-xl">
-                Deploy end-to-end fullstack structures, responsive operational logic, components, and cloud infrastructure instantly using natural language prompts.
+          <div className="max-w-4xl space-y-12">
+            <div className="space-y-5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-neutral-200 shadow-sm rounded-full text-xs font-medium text-neutral-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Engine Deployment Core Active v2.0.4
+              </div>
+              <h1 className="text-6xl font-black tracking-tight text-black leading-[0.95]">
+                THE NEXT GENERATION OF FULL-STACK ORCHESTRATION.
+              </h1>
+              <p className="text-neutral-500 text-lg max-w-2xl leading-relaxed">
+                Deploy end-to-end user interfaces, secure transactional webhooks, logic kernels, and persistent custom databases completely autonomously.
               </p>
               <button 
                 onClick={() => setShowGetStartedModal(true)}
-                className="mt-4 bg-black text-white px-8 py-3 rounded-xl font-medium shadow-lg shadow-black/10 hover:bg-neutral-900 transition-all active:scale-95"
+                className="mt-2 bg-black text-white px-8 py-3.5 rounded-xl text-sm font-semibold shadow-lg shadow-black/10 hover:bg-neutral-900 transition-all hover:-translate-y-0.5 active:translate-y-0"
               >
                 GET STARTED
               </button>
             </div>
 
-            {/* WHAT WE CAN BUILD SECTION */}
-            <div className="border-t border-neutral-200/60 pt-8 space-y-4">
-              <h3 className="text-xl font-bold tracking-tight text-black">Engine CapabilitiesMatrix</h3>
+            {/* WHAT WE CAN BUILD PANEL MATRIX */}
+            <div className="border-t border-neutral-200/60 pt-10 space-y-4">
+              <h3 className="text-sm font-bold tracking-widest text-neutral-400 uppercase">Engine Capabilities Infrastructure</h3>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-5 bg-white border border-neutral-200/60 rounded-xl">
-                  <h4 className="font-bold text-sm text-black mb-1">Dynamic Database Injection</h4>
-                  <p className="text-xs text-neutral-400 leading-relaxed">Spins up real Supabase schema architectures instantly with real data fields and foreign constraints.</p>
+                {/* FLOATING HOVER CARD 1 */}
+                <div className="p-6 bg-white border border-neutral-200/50 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md hover:border-neutral-400 group cursor-default">
+                  <h4 className="font-bold text-base text-neutral-500 group-hover:text-black transition-colors duration-200 mb-1">Dynamic Database Provisioning</h4>
+                  <p className="text-xs text-neutral-400 leading-relaxed group-hover:text-neutral-600 transition-colors duration-200">
+                    Automatically initializes dedicated data tables inside micro-isolated Supabase architecture setups for every individual app generated.
+                  </p>
                 </div>
-                <div className="p-5 bg-white border border-neutral-200/60 rounded-xl">
-                  <h4 className="font-bold text-sm text-black mb-1">Functional URL Core Routing</h4>
-                  <p className="text-xs text-neutral-400 leading-relaxed">Generated websites can perform seamless route transformations, generate operational PDFs, and trigger webhooks on consumer demand.</p>
+                {/* FLOATING HOVER CARD 2 */}
+                <div className="p-6 bg-white border border-neutral-200/50 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md hover:border-neutral-400 group cursor-default">
+                  <h4 className="font-bold text-base text-neutral-500 group-hover:text-black transition-colors duration-200 mb-1">Stateful URL Route Compilers</h4>
+                  <p className="text-xs text-neutral-400 leading-relaxed group-hover:text-neutral-600 transition-colors duration-200">
+                    Enables dynamic client redirection parameters, binary asset PDF file factory download processes, and third-party Webhook automation loops.
+                  </p>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 2: SUBSCRIPTION HUB */}
+        {/* TAB: WEB APP GENERATOR */}
+        {currentTab === 'web-gen' && (
+          <div className="max-w-4xl space-y-8">
+            <div>
+              <h2 className="text-2xl font-black tracking-tight text-black">Autonomous Web App Generator</h2>
+              <p className="text-xs text-neutral-400">Compile front-end structures, styling layouts, and live component hooks.</p>
+            </div>
+
+            {/* ENGINE CONFIGURATION BOX */}
+            <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex gap-4 border-b border-neutral-100 pb-4">
+                <button onClick={() => setActivePlanMode('standard')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${activePlanMode === 'standard' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500'}`}>Standard Mode</button>
+                <button onClick={() => setActivePlanMode('deep-reasoning')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${activePlanMode === 'deep-reasoning' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500'}`}>Deep Reasoning Fabric</button>
+              </div>
+
+              <textarea 
+                value={webPrompt}
+                onChange={(e) => setWebPrompt(e.target.value)}
+                placeholder="e.g., Build a functional medical diagnostics inventory system with real-time data tables and custom billing calculations..."
+                className="w-full h-32 p-4 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none font-mono"
+              />
+
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-xs font-medium text-neutral-400">Cost: 25 Compute Tokens</span>
+                <button 
+                  onClick={() => handleStartGeneration(webPrompt, 'web')}
+                  disabled={generationStep === 'generating'}
+                  className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all disabled:bg-neutral-300"
+                >
+                  {generationStep === 'generating' ? 'Compiling Architecture...' : 'Trigger Neural Generation'}
+                </button>
+              </div>
+            </div>
+
+            {/* REAL-TIME RUNTIME SANDBOX COMPONENT */}
+            {generationStep !== 'idle' && (
+              <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4 animate-fade-in">
+                <div className="flex justify-between items-center border-b border-neutral-100 pb-3">
+                  <span className="text-xs font-bold text-black tracking-wider uppercase">Vercel Edge Sandbox Terminal</span>
+                  <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${generationStep === 'generating' ? 'bg-amber-100 text-amber-700 animate-pulse' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {generationStep === 'generating' ? 'COMPILING SOURCE TREE' : 'SANDBOX PROTOTYPE READY'}
+                  </span>
+                </div>
+
+                {generationStep === 'generating' ? (
+                  <div className="space-y-2 font-mono text-xs text-neutral-400 py-4">
+                    <p className="">[INFO] Initializing sandbox isolate cluster instance...</p>
+                    <p className="">[FABRIC] Binding localized Supabase schemas dynamically...</p>
+                    <p className="">[COMPILER] Injecting UI component trees and operational navigation paths...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="w-full h-64 bg-neutral-50 rounded-xl border border-neutral-200 border-dashed flex items-center justify-center text-xs text-neutral-400">
+                      [ Simulated Interactive Virtual Live Output Screen Viewport Window ]
+                    </div>
+                    <div className="flex gap-4 items-center justify-between bg-neutral-50 p-4 rounded-xl border border-neutral-200">
+                      <div>
+                        <span className="text-xs font-bold text-black block">Publish to Cloud Production Routing</span>
+                        <span className="text-[11px] text-neutral-400 block">Deploy globally onto a custom subfolder path map.</span>
+                      </div>
+                      <button 
+                        onClick={() => alert(`Project published securely! Share your production gateway link:\n${generatedUrl}`)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-xs font-bold transition-all"
+                      >
+                        Publish Asset Setup
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB: SAAS GENERATOR */}
+        {currentTab === 'saas-gen' && (
+          <div className="max-w-4xl space-y-8">
+            <div>
+              <h2 className="text-2xl font-black tracking-tight text-black">Production-Grade SaaS Builder</h2>
+              <p className="text-xs text-neutral-400">Orchestrate complex cloud multi-tenant applications with subscription gateways and advanced endpoint trees.</p>
+            </div>
+
+            <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
+              <textarea 
+                value={saasPrompt}
+                onChange={(e) => setSaasPrompt(e.target.value)}
+                placeholder="Describe your corporate SaaS blueprint rules (e.g., CRM with stripe webhook alerts, multi-tier tenant storage isolation, automated analytics logging)..."
+                className="w-full h-32 p-4 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none font-mono"
+              />
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-neutral-400">Cost: 25 Compute Tokens</span>
+                <button 
+                  onClick={() => handleStartGeneration(saasPrompt, 'saas')}
+                  className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all"
+                >
+                  Compile SaaS Container
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: AUTONOMOUS AGENTS */}
+        {currentTab === 'agent-gen' && (
+          <div className="max-w-4xl space-y-8">
+            <div>
+              <h2 className="text-2xl font-black tracking-tight text-black">Autonomous Agent Constructor</h2>
+              <p className="text-xs text-neutral-400">Instantiate long-running script processes capable of processing file matrix logic, scheduling tasks, and communicating with web systems.</p>
+            </div>
+
+            <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
+              <textarea 
+                value={agentPrompt}
+                onChange={(e) => setAgentPrompt(e.target.value)}
+                placeholder="Specify target task execution flow parameters (e.g., Scan local server file logs every 60 mins, extract metrics data, post summary to internal api)..."
+                className="w-full h-32 p-4 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none font-mono"
+              />
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-neutral-400">Cost: 25 Compute Tokens</span>
+                <button 
+                  onClick={() => handleStartGeneration(agentPrompt, 'agent')}
+                  className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all"
+                >
+                  Spin Up Engine Agent
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: SUBSCRIPTION HUB WITH INTERACTIVE HOVER PANELS */}
         {currentTab === 'billing' && (
           <div className="space-y-8">
             <div>
-              <h2 className="text-3xl font-extrabold tracking-tight text-black">Subscription Tiers</h2>
-              <p className="text-neutral-500 text-sm">Pick your development speed allocation tier.</p>
+              <h2 className="text-3xl font-black tracking-tight text-black">Subscription Allocation Tiers</h2>
+              <p className="text-neutral-500 text-sm">Select your architectural development lane parameters below.</p>
             </div>
             <div className="grid grid-cols-3 gap-6 max-w-5xl">
-              {/* FREE TIER */}
-              <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm">
+              {/* FREE TIER CARD */}
+              <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md hover:border-neutral-400 group">
                 <div>
-                  <h3 className="font-bold text-lg text-black">Free Prototyping</h3>
+                  <h3 className="font-bold text-lg text-neutral-400 group-hover:text-black transition-colors duration-200">Free Prototyping</h3>
                   <div className="my-4"><span className="text-3xl font-black">₹0</span><span className="text-neutral-400 text-xs"> / forever</span></div>
-                  <ul className="text-xs text-neutral-500 space-y-2.5">
-                    <li>• 1,000 baseline operations credits</li>
+                  <ul className="text-xs text-neutral-400 group-hover:text-neutral-500 transition-colors duration-200 space-y-2.5">
+                    <li>• 1,000 baseline operation credits</li>
                     <li>• Maximum 3 live website deployments</li>
                     <li>• SaaS & Agent modes restricted to Sandbox Prototype only</li>
                   </ul>
                 </div>
-                <button className="w-full mt-8 bg-neutral-100 text-neutral-700 py-2.5 rounded-lg text-xs font-semibold">Active Plan</button>
+                <button className="w-full mt-8 bg-neutral-100 text-neutral-400 py-2.5 rounded-xl text-xs font-bold cursor-not-allowed">Default Framework active</button>
               </div>
 
-              {/* PRO TIER */}
-              <div className="bg-white border-2 border-black rounded-2xl p-6 flex flex-col justify-between shadow-md relative">
-                <div className="absolute -top-3 left-6 bg-black text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">POPULAR</div>
+              {/* PRO TIER CARD */}
+              <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md hover:border-neutral-400 group relative">
+                <div className="absolute -top-2.5 right-6 bg-black text-white text-[9px] tracking-widest font-black px-2.5 py-0.5 rounded-full">POPULAR CHOICE</div>
                 <div>
-                  <h3 className="font-bold text-lg text-black">Nebula Pro</h3>
+                  <h3 className="font-bold text-lg text-neutral-400 group-hover:text-black transition-colors duration-200">Nebula Pro</h3>
                   <div className="my-4"><span className="text-3xl font-black">₹500</span><span className="text-neutral-400 text-xs"> ($5.60) / mo</span></div>
-                  <ul className="text-xs text-neutral-500 space-y-2.5">
-                    <li>• Max 15 Live Websites</li>
-                    <li>• SaaS & Agent Deployment Permissions enabled</li>
-                    <li>• Automated Recurring monthly subscription payment</li>
+                  <ul className="text-xs text-neutral-400 group-hover:text-neutral-500 transition-colors duration-200 space-y-2.5">
+                    <li>• Up to 15 Active Production Websites</li>
+                    <li>• Full Cloud Live SaaS & Agent Deployments Enabled</li>
+                    <li>• Automatic automated recurring payment processing link</li>
                   </ul>
                 </div>
-                <button className="w-full mt-8 bg-black text-white py-2.5 rounded-lg text-xs font-semibold hover:bg-neutral-900">Upgrade to Pro</button>
+                <button 
+                  onClick={() => executeUPICheckout(500, "Nebula Pro")}
+                  className="w-full mt-8 bg-black text-white py-2.5 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all shadow-md"
+                >
+                  Activate Pro Account
+                </button>
               </div>
 
-              {/* PREMIUM TIER */}
-              <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm">
+              {/* PREMIUM TIER CARD */}
+              <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md hover:border-neutral-400 group">
                 <div>
-                  <h3 className="font-bold text-lg text-black">Supernova AI</h3>
+                  <h3 className="font-bold text-lg text-neutral-400 group-hover:text-black transition-colors duration-200">Supernova AI</h3>
                   <div className="my-4"><span className="text-3xl font-black">₹1,500</span><span className="text-neutral-400 text-xs"> ($16.70) / mo</span></div>
-                  <ul className="text-xs text-neutral-500 space-y-2.5">
-                    <li>• **Unlimited** Live Web Deployments</li>
-                    <li>• **Unlimited** SaaS Integration Frameworks</li>
-                    <li>• Priority Dedicated Agent Processing Lanes</li>
+                  <ul className="text-xs text-neutral-400 group-hover:text-neutral-500 transition-colors duration-200 space-y-2.5">
+                    <li>• **Unlimited** Live Web App Production Allocations</li>
+                    <li>• **Unlimited** Fully Autonomous SaaS Builds</li>
+                    <li>• High-Priority Dedicated Agent Core Execution Pipes</li>
                   </ul>
                 </div>
-                <button className="w-full mt-8 bg-black text-white py-2.5 rounded-lg text-xs font-semibold hover:bg-neutral-900">Go Premium</button>
+                <button 
+                  onClick={() => executeUPICheckout(1500, "Supernova AI")}
+                  className="w-full mt-8 bg-black text-white py-2.5 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all shadow-md"
+                >
+                  Go Premium Enterprise
+                </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 3: DEVELOPER API */}
-        {currentTab === 'api' && (
-          <div className="space-y-6 max-w-3xl">
-            <h2 className="text-2xl font-bold tracking-tight text-black">The Kinetix Neural Endpoint API</h2>
-            <p className="text-sm text-neutral-500">Integrate the system's dynamic source compiler straight into your backend server logic using our secure SDK token structures.</p>
-            <div className="bg-neutral-900 text-neutral-200 p-6 rounded-xl font-mono text-xs overflow-x-auto shadow-inner">
-              <span className="text-emerald-400">const</span> sdk = require(<span className="text-amber-300">'@kinetix/core'</span>);<br/>
-              <span className="text-emerald-400">const</span> client = await sdk.init(&#123; apiKey: <span className="text-amber-300">'KTX_402_NEXUS'</span> &#125;);<br/><br/>
-              <span className="text-slate-400">// Trigger dynamic compilation protocol loop</span><br/>
-              <span className="text-emerald-400">const</span> agent = await client.agents.create(&#123;<br/>
-              &nbsp;&nbsp;intent: <span className="text-amber-300">"Build dynamic dashboard system with PDF generation modules"</span><br/>
-              &#125;);
+        {/* TAB: COMPLETE SYSTEM DOCUMENTATION & REPREX INDEX */}
+        {currentTab === 'docs' && (
+          <div className="max-w-3xl space-y-8 prose prose-neutral">
+            <div>
+              <h2 className="text-3xl font-black tracking-tight text-black mb-1">Documentation & Knowledge Matrix</h2>
+              <p className="text-xs text-neutral-400 font-mono">Engine Manual v2.0 // Core API Integration Guidelines</p>
+            </div>
+
+            <div className="space-y-6 text-sm text-neutral-600 leading-relaxed">
+              <section className="bg-white p-6 border border-neutral-200/60 rounded-2xl space-y-2">
+                <h3 className="font-bold text-base text-black">1. Neural Architecture Introduction</h3>
+                <p>The Kinetix engine processes declarative user requirements through multiple specialized sub-agents. These sub-agents coordinate file creation, interface layouts, and database schemas automatically.</p>
+              </section>
+
+              <section className="bg-white p-6 border border-neutral-200/60 rounded-2xl space-y-2">
+                <h3 className="font-bold text-base text-black">2. Quickstart Execution Guide</h3>
+                <p>To initialize an autonomous project configuration container, input your specific requirements into either the Web App Generator or SaaS Builder console windows. Each request evaluates code structures and generates an active sandbox container in under 5 seconds.</p>
+              </section>
+
+              <section className="bg-white p-6 border border-neutral-200/60 rounded-2xl space-y-2">
+                <h3 className="font-bold text-base text-black">3. Orchestration Logic & Credit Cycles</h3>
+                <p>Every runtime evaluation or dynamic component update consumes exactly 25 compute tokens from your active account balance. When your credit balance is completely empty, sandbox systems pause execution processes until you upgrade your tier within the Subscription Hub.</p>
+              </section>
             </div>
           </div>
         )}
 
-        {/* TAB 4: COMPANY INFO */}
+        {/* TAB: DEVELOPER API CONSOLE */}
+        {currentTab === 'api' && (
+          <div className="max-w-3xl space-y-6">
+            <div>
+              <h2 className="text-2xl font-black tracking-tight text-black">Developer API Matrix & Core Integration</h2>
+              <p className="text-xs text-neutral-400">Interact with Kinetix orchestration algorithms programmatically using our unified JSON server token keys.</p>
+            </div>
+            
+            <div className="bg-white border border-neutral-200 rounded-2xl p-6 space-y-4">
+              <h3 className="text-xs font-bold tracking-wider uppercase text-neutral-400">Endpoint References & Core Libraries</h3>
+              <p className="text-xs text-neutral-500 leading-relaxed">
+                Our endpoint tree interfaces directly with cloud architectures, spinning up modular Supabase structures on demand. Use the core libraries framework snippet below to instantiate generation loops from external server files:
+              </p>
+              
+              <div className="bg-neutral-900 text-neutral-200 p-5 rounded-xl font-mono text-xs overflow-x-auto shadow-inner leading-relaxed">
+                <span className="text-emerald-400">const</span> KinetixSDK = require(<span className="text-amber-300">'@kinetix-ai/core'</span>);<br/>
+                <span className="text-emerald-400">const</span> client = <span className="text-emerald-400">new</span> KinetixSDK(&#123; apiToken: <span className="text-amber-300">'KTX_SECURE_902_ALPHA_LINK'</span> &#125;);<br/><br/>
+                <span className="text-slate-400">// Initialize an isolated full-stack system pipeline</span><br/>
+                <span className="text-emerald-400">const</span> projectInstance = <span className="text-emerald-400">await</span> client.compile.container(&#123;<br/>
+                &nbsp;&nbsp;blueprintType: <span className="text-amber-300">'saas-production'</span>,<br/>
+                &nbsp;&nbsp;promptInput: <span className="text-amber-300">'Build high-performance billing tracking hub with PDF extraction systems'</span><br/>
+                &#125;);
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: COMPANY INFO */}
         {currentTab === 'company' && (
-          <div className="space-y-6 max-w-2xl bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
-            <h2 className="text-3xl font-bold tracking-tight text-black">The Platform Vision</h2>
-            <p className="text-neutral-600 text-sm leading-relaxed">
-              Kinetix.ai is focused on modular cloud software orchestration engines. Our goal is to transform conversational instructions straight into robust applications, matching production metrics.
-            </p>
-            <div className="pt-6 border-t border-neutral-100">
-              <span className="text-xs font-semibold text-neutral-400 uppercase tracking-widest block mb-1">Architect & Founder</span>
-              <span className="text-lg font-bold text-black block">Nikhil Boddeti</span>
-              <p className="text-xs text-neutral-500 mt-1">
-                Distinguished creator behind <strong className="text-black font-semibold">ACELY</strong>, an advanced premium AI-driven application stack specialized in high-performance cross-curriculum academic resource modeling.
+          <div className="max-w-3xl space-y-6 bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
+            <div>
+              <h2 className="text-3xl font-black tracking-tight text-black mb-1">Corporate Profile & Architectural Manifesto</h2>
+              <p className="text-xs text-neutral-400 font-mono">Platform Identity Management Record</p>
+            </div>
+            
+            <div className="text-sm text-neutral-600 space-y-4 leading-relaxed">
+              <p>
+                Kinetix.ai is focused on conversational software orchestration engines. We build AI architectures capable of converting simple language commands directly into production-ready software systems, custom cloud databases, and isolated sandbox execution networks.
+              </p>
+              <p>
+                Our core vision aims to remove technical barriers for developers, creators, and entrepreneurs globally. This allows multi-tier applications to be planned, written, structured, and deployed safely onto web services instantly.
               </p>
             </div>
+
+            <div className="pt-8 border-t border-neutral-100 flex justify-between items-start">
+              <div>
+                <span className="text-xs font-semibold text-neutral-400 uppercase tracking-widest block mb-1">Architect & Principal Founder</span>
+                <span className="text-xl font-black text-black block">Tanish Suresh</span>
+                <p className="text-xs text-neutral-500 mt-2 max-w-lg leading-relaxed">
+                  Distinguished creator behind <strong className="text-black font-semibold">ACELY</strong>, a premium AI-driven academic application stack designed to help students study more effectively through automated material structuring and cross-curriculum knowledge modeling.
+                </p>
+              </div>
+              <div className="bg-neutral-50 p-4 border border-neutral-200 rounded-xl text-right">
+                <span className="text-[10px] font-bold text-neutral-400 block uppercase">Project Pipeline Track</span>
+                <span className="text-xs font-bold text-emerald-600 block mt-1">3 Active Web Prototypes</span>
+              </div>
+            </div>
           </div>
         )}
+
+        {/* BOTTOM REDIRECTION STACK BLACK GAP */}
+        <div className="mt-16 bg-black text-neutral-400 p-8 rounded-2xl flex justify-between items-center shadow-lg">
+          <div className="space-y-1">
+            <span className="text-white font-bold text-sm tracking-tight block">Ready to scale beyond the baseline constraints?</span>
+            <span className="text-xs text-neutral-500 block">Deploy custom API gateways, unlimited database structures, and high-frequency agents instantly.</span>
+          </div>
+          <button 
+            onClick={() => setCurrentTab('billing')}
+            className="bg-white text-black px-5 py-2 rounded-xl text-xs font-bold hover:bg-neutral-100 transition-all"
+          >
+            Upgrade System Speed Matrix
+          </button>
+        </div>
 
       </main>
 
-      {/* MODAL / POPUP COMPONENT (GET STARTED TRIGGER) */}
+      {/* GET STARTED PROMPT ENTRY POPUP PORTAL */}
       {showGetStartedModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in">
           <div className="bg-white border border-neutral-200 rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-6">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-xl font-bold text-black tracking-tight">Select Application Target</h3>
-                <p className="text-xs text-neutral-400">Choose the generation blueprint depth for the processor engine.</p>
+                <h3 className="text-xl font-bold text-black tracking-tight">Select Production Scope Target</h3>
+                <p className="text-xs text-neutral-400">Choose the depth of the orchestration loop before processing.</p>
               </div>
               <button onClick={() => setShowGetStartedModal(false)} className="text-neutral-400 hover:text-black font-bold text-sm">✕</button>
             </div>
 
             <div className="space-y-3">
               <button onClick={() => { setCurrentTab('web-gen'); setShowGetStartedModal(false); }} className="w-full p-4 border border-neutral-200 hover:border-black rounded-xl text-left transition-all group">
-                <span className="font-bold text-sm text-black block group-hover:text-black">Web App / App Generator</span>
-                <span className="text-xs text-neutral-400 block mt-0.5">Creates single pages, component states, and simple data schemas.</span>
+                <span className="font-bold text-sm text-black block">Web App / UI Template Generator</span>
+                <span className="text-xs text-neutral-400 block mt-0.5">Creates functional components, layouts, styling presets, and client states.</span>
               </button>
               
               <button onClick={() => { setCurrentTab('saas-gen'); setShowGetStartedModal(false); }} className="w-full p-4 border border-neutral-200 hover:border-black rounded-xl text-left transition-all group">
-                <span className="font-bold text-sm text-black block group-hover:text-black">Production Grade SaaS Generator</span>
-                <span className="text-xs text-neutral-400 block mt-0.5">Generates secure API endpoints, subscription handlers, and active webhooks.</span>
+                <span className="font-bold text-sm text-black block">Production Grade SaaS Platform Builder</span>
+                <span className="text-xs text-neutral-400 block mt-0.5">Generates deep infrastructure trees, API endpoints, webhook listeners, and database tables.</span>
               </button>
             </div>
           </div>
