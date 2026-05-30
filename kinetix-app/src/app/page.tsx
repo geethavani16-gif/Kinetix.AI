@@ -14,10 +14,13 @@ export default function KinetixDashboard() {
   const [generationStep, setGenerationStep] = useState<'idle' | 'generating' | 'prototype' | 'deployed'>('idle');
   const [generatedUrl, setGeneratedUrl] = useState('');
   const [agentResult, setAgentResult] = useState<any>(null);
+  const [clarificationQuestions, setClarificationQuestions] = useState<string[]>([]);
+  const [clarificationAnswers, setClarificationAnswers] = useState('');
+  const [awaitingClarification, setAwaitingClarification] = useState(false);
 
   const { credits, deductCredits } = useKinetix();
 
-  const handleStartGeneration = async (promptText: string, type: 'web' | 'saas' | 'agent') => {
+  const handleStartGeneration = async (promptText: string, type: 'web' | 'saas' | 'agent', answers?: string) => {
     if (!promptText.trim()) {
       alert("Please specify your architectural requirements in the prompt matrix first.");
       return;
@@ -27,23 +30,40 @@ export default function KinetixDashboard() {
       return;
     }
 
-    setGenerationStep('generating');
-    deductCredits(25);
-
     if (type === 'agent') {
       setAgentResult(null);
+      setGenerationStep('generating');
+
       try {
         const res = await fetch('/api/generate-agent', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ prompt: promptText }),
+          body: JSON.stringify({ prompt: promptText, answers: answers || null }),
         });
+
+        if (!res.ok) {
+          const text = await res.text();
+          alert('Server error: ' + text.slice(0, 200));
+          setGenerationStep('idle');
+          return;
+        }
+
         const data = await res.json();
+
+        if (data.needsClarification) {
+          setClarificationQuestions(data.questions);
+          setAwaitingClarification(true);
+          setGenerationStep('idle');
+          return;
+        }
+
         if (data.error) {
           alert('Error: ' + data.error);
           setGenerationStep('idle');
           return;
         }
+
+        deductCredits(25);
         setAgentResult(data);
         setGenerationStep('prototype');
       } catch (err: any) {
@@ -51,12 +71,24 @@ export default function KinetixDashboard() {
         alert('Network error: ' + err.message);
       }
     } else {
+      setGenerationStep('generating');
+      deductCredits(25);
       setTimeout(() => {
         setGenerationStep('prototype');
         const mockProjectHash = Math.random().toString(36).substring(7);
         setGeneratedUrl(`https://${mockProjectHash}.base44.app`);
       }, 3000);
     }
+  };
+
+  const handleSubmitClarification = () => {
+    if (!clarificationAnswers.trim()) {
+      alert('Please answer the questions before proceeding.');
+      return;
+    }
+    setAwaitingClarification(false);
+    setClarificationQuestions([]);
+    handleStartGeneration(agentPrompt, 'agent', clarificationAnswers);
   };
 
   const executeUPICheckout = (amount: number, planName: string) => {
@@ -96,7 +128,7 @@ export default function KinetixDashboard() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => { setCurrentTab(tab.id as any); setGenerationStep('idle'); setAgentResult(null); }}
+                onClick={() => { setCurrentTab(tab.id as any); setGenerationStep('idle'); setAgentResult(null); setAwaitingClarification(false); setClarificationQuestions([]); setClarificationAnswers(''); }}
                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   currentTab === tab.id
                     ? 'bg-neutral-100 text-black shadow-sm font-semibold'
@@ -213,12 +245,7 @@ export default function KinetixDashboard() {
                         <span className="text-xs font-bold text-black block">Publish to Cloud Production Routing</span>
                         <span className="text-[11px] text-neutral-400 block">Deploy globally onto a custom subfolder path map.</span>
                       </div>
-                      <button
-                        onClick={() => alert(`Project published securely! Share your production gateway link:\n${generatedUrl}`)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-xs font-bold transition-all"
-                      >
-                        Publish Asset Setup
-                      </button>
+                      <button onClick={() => alert(`Project published securely! Share your production gateway link:\n${generatedUrl}`)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-xs font-bold transition-all">Publish Asset Setup</button>
                     </div>
                   </div>
                 )}
@@ -238,7 +265,7 @@ export default function KinetixDashboard() {
               <textarea
                 value={saasPrompt}
                 onChange={(e) => setSaasPrompt(e.target.value)}
-                placeholder="Describe your corporate SaaS blueprint rules (e.g., CRM with stripe webhook alerts, multi-tier tenant storage isolation, automated analytics logging)..."
+                placeholder="Describe your corporate SaaS blueprint rules..."
                 className="w-full h-32 p-4 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none font-mono"
               />
               <div className="flex justify-between items-center">
@@ -276,12 +303,7 @@ export default function KinetixDashboard() {
                         <span className="text-xs font-bold text-black block">Publish Cloud Cluster Gateway</span>
                         <span className="text-[11px] text-neutral-400 block">Expose core API routes and tenant dashboards globally.</span>
                       </div>
-                      <button
-                        onClick={() => alert(`SaaS app deployed onto the Kinetix network architecture:\n${generatedUrl}`)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-xs font-bold transition-all"
-                      >
-                        Launch Live SaaS
-                      </button>
+                      <button onClick={() => alert(`SaaS app deployed onto the Kinetix network architecture:\n${generatedUrl}`)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-xs font-bold transition-all">Launch Live SaaS</button>
                     </div>
                   </div>
                 )}
@@ -297,10 +319,12 @@ export default function KinetixDashboard() {
               <h2 className="text-2xl font-black tracking-tight text-black">Autonomous Agent Constructor</h2>
               <p className="text-xs text-neutral-400">Instantiate long-running script processes capable of processing file matrix logic, scheduling tasks, and communicating with web systems.</p>
             </div>
+
+            {/* Prompt input — always visible */}
             <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
               <textarea
                 value={agentPrompt}
-                onChange={(e) => setAgentPrompt(e.target.value)}
+                onChange={(e) => { setAgentPrompt(e.target.value); setAwaitingClarification(false); setClarificationQuestions([]); setClarificationAnswers(''); }}
                 placeholder="Specify target task execution flow parameters (e.g., Scan local server file logs every 60 mins, extract metrics data, post summary to internal api)..."
                 className="w-full h-32 p-4 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none font-mono"
               />
@@ -308,7 +332,7 @@ export default function KinetixDashboard() {
                 <span className="text-xs font-medium text-neutral-400">Cost: 25 Compute Tokens</span>
                 <button
                   onClick={() => handleStartGeneration(agentPrompt, 'agent')}
-                  disabled={generationStep === 'generating'}
+                  disabled={generationStep === 'generating' || awaitingClarification}
                   className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all disabled:bg-neutral-300"
                 >
                   {generationStep === 'generating' ? 'Spawning Agent Core...' : 'Spin Up Engine Agent'}
@@ -316,6 +340,45 @@ export default function KinetixDashboard() {
               </div>
             </div>
 
+            {/* Clarification questions panel */}
+            {awaitingClarification && clarificationQuestions.length > 0 && (
+              <div className="bg-white border border-amber-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
+                  <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+                  <span className="text-xs font-bold text-black tracking-wider uppercase">Integration Configuration Required</span>
+                </div>
+                <p className="text-xs text-neutral-500">The engine detected external integrations in your prompt. Please answer the following before compilation proceeds:</p>
+                <div className="space-y-3">
+                  {clarificationQuestions.map((q, i) => (
+                    <div key={i} className="bg-neutral-50 border border-neutral-200 rounded-xl p-3">
+                      <p className="text-xs font-semibold text-black mb-1">{i + 1}. {q}</p>
+                    </div>
+                  ))}
+                </div>
+                <textarea
+                  value={clarificationAnswers}
+                  onChange={(e) => setClarificationAnswers(e.target.value)}
+                  placeholder="Type your answers here, numbered to match the questions above (e.g. 1. Yes, I have a Twilio SID: ACXXXXX  2. Using SendGrid, key is SG.XXXXX)..."
+                  className="w-full h-28 p-4 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none font-mono"
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleSubmitClarification}
+                    className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all"
+                  >
+                    Submit & Compile Agent
+                  </button>
+                  <button
+                    onClick={() => { setAwaitingClarification(false); setClarificationQuestions([]); setClarificationAnswers(''); handleStartGeneration(agentPrompt, 'agent', 'skip'); }}
+                    className="bg-neutral-100 text-neutral-500 px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-200 transition-all"
+                  >
+                    Skip & Use Placeholders
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Telemetry output */}
             {generationStep !== 'idle' && (
               <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
                 <div className="flex justify-between items-center border-b border-neutral-100 pb-3">
@@ -340,6 +403,17 @@ export default function KinetixDashboard() {
                       {agentResult?.schedule && <p>[CRON] Schedule: {agentResult.schedule}</p>}
                       {agentResult?.targetSystems && <p>[CONNECT] Target systems: {agentResult.targetSystems.join(', ')}</p>}
                     </div>
+                    {agentResult?.envVarsNeeded?.length > 0 && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                        <p className="text-xs font-bold text-amber-800 mb-2">Environment Variables Required</p>
+                        <div className="flex flex-wrap gap-2">
+                          {agentResult.envVarsNeeded.map((v: string, i: number) => (
+                            <span key={i} className="bg-amber-100 text-amber-700 text-[11px] font-mono px-2 py-0.5 rounded">{v}</span>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-amber-600 mt-2">Add these to your .env file or Vercel environment variables before running the agent.</p>
+                      </div>
+                    )}
                     {agentResult?.code && (
                       <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-2">
                         <div className="flex justify-between items-center">
@@ -359,12 +433,7 @@ export default function KinetixDashboard() {
                         <span className="text-xs font-bold text-black block">Active Agent Operational Status</span>
                         <span className="text-[11px] text-neutral-400 block">Agent processes run persistently in the background.</span>
                       </div>
-                      <button
-                        onClick={() => alert(`Agent stream successfully online. Telemetry payload connection secure.`)}
-                        className="bg-neutral-900 hover:bg-neutral-800 text-white px-5 py-2 rounded-lg text-xs font-bold transition-all"
-                      >
-                        Ping Agent Daemon
-                      </button>
+                      <button onClick={() => alert(`Agent stream successfully online. Telemetry payload connection secure.`)} className="bg-neutral-900 hover:bg-neutral-800 text-white px-5 py-2 rounded-lg text-xs font-bold transition-all">Ping Agent Daemon</button>
                     </div>
                   </div>
                 )}
@@ -455,7 +524,7 @@ export default function KinetixDashboard() {
             </div>
             <div className="bg-white border border-neutral-200 rounded-2xl p-6 space-y-4">
               <h3 className="text-xs font-bold tracking-wider uppercase text-neutral-400">Endpoint References & Core Libraries</h3>
-              <p className="text-xs text-neutral-500 leading-relaxed">Our endpoint tree interfaces directly with cloud architectures, spinning up modular Supabase structures on demand. Use the core libraries framework snippet below to instantiate generation loops from external server files:</p>
+              <p className="text-xs text-neutral-500 leading-relaxed">Our endpoint tree interfaces directly with cloud architectures, spinning up modular Supabase structures on demand.</p>
               <div className="bg-neutral-900 text-neutral-200 p-5 rounded-xl font-mono text-xs overflow-x-auto shadow-inner leading-relaxed">
                 <span className="text-emerald-400">const</span> KinetixSDK = require(<span className="text-amber-300">'@kinetix-ai/core'</span>);<br/>
                 <span className="text-emerald-400">const</span> client = <span className="text-emerald-400">new</span> KinetixSDK(&#123; apiToken: <span className="text-amber-300">'KTX_SECURE_902_ALPHA_LINK'</span> &#125;);<br/><br/>
