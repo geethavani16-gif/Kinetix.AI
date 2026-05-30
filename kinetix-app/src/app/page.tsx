@@ -5,25 +5,23 @@ import { useKinetix } from './context/KinetixContext';
 export default function KinetixDashboard() {
   const [currentTab, setCurrentTab] = useState<'home' | 'web-gen' | 'saas-gen' | 'agent-gen' | 'billing' | 'docs' | 'api' | 'company'>('home');
   const [showGetStartedModal, setShowGetStartedModal] = useState(false);
-  
-  // Prompts & Engine Modes per Section
+
   const [webPrompt, setWebPrompt] = useState('');
   const [saasPrompt, setSaasPrompt] = useState('');
   const [agentPrompt, setAgentPrompt] = useState('');
-  
+
   const [activePlanMode, setActivePlanMode] = useState<'standard' | 'deep-reasoning'>('standard');
   const [generationStep, setGenerationStep] = useState<'idle' | 'generating' | 'prototype' | 'deployed'>('idle');
   const [generatedUrl, setGeneratedUrl] = useState('');
+  const [agentResult, setAgentResult] = useState<any>(null);
 
   const { credits, deductCredits } = useKinetix();
 
-  // Unified Generation Pipeline Trigger
-  const handleStartGeneration = (promptText: string, type: 'web' | 'saas' | 'agent') => {
+  const handleStartGeneration = async (promptText: string, type: 'web' | 'saas' | 'agent') => {
     if (!promptText.trim()) {
-      alert("Please specify your architectural requirements in the prompt prompt matrix first.");
+      alert("Please specify your architectural requirements in the prompt matrix first.");
       return;
     }
-    
     if (credits < 25) {
       alert("Insufficient compute allocation tokens remaining. Please upgrade your status in the Subscription Hub.");
       return;
@@ -32,28 +30,42 @@ export default function KinetixDashboard() {
     setGenerationStep('generating');
     deductCredits(25);
 
-    // Simulate Autonomous Pipeline Compilation
-    setTimeout(() => {
-      setGenerationStep('prototype');
-      const mockProjectHash = Math.random().toString(36).substring(7);
-      setGeneratedUrl(`https://${mockProjectHash}.base44.app`);
-    }, 3000);
+    if (type === 'agent') {
+      setAgentResult(null);
+      try {
+        const res = await fetch('/api/generate-agent', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ prompt: promptText }),
+        });
+        const data = await res.json();
+        if (data.error) {
+          alert('Agent generation failed: ' + data.error);
+          setGenerationStep('idle');
+          return;
+        }
+        setAgentResult(data);
+        setGenerationStep('prototype');
+      } catch {
+        setGenerationStep('idle');
+        alert('Agent generation failed. Check your API key in Vercel environment variables.');
+      }
+    } else {
+      setTimeout(() => {
+        setGenerationStep('prototype');
+        const mockProjectHash = Math.random().toString(36).substring(7);
+        setGeneratedUrl(`https://${mockProjectHash}.base44.app`);
+      }, 3000);
+    }
   };
 
-  // Upgraded UPI Payment Gateway Redirection Engine
   const executeUPICheckout = (amount: number, planName: string) => {
     const upiId = "geethavani16@oksbi";
     const payeeName = "Tanish Suresh";
     const transactionNote = `Kinetix.ai Subscription Activation [${planName}]`;
-    
-    // Standardized National Payments Corporation of India (NPCI) deep link parameters
     const upiDeepLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}.00&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
-    
-    // Primary fallback browser destination path to ensure full operational runtime across devices
     const googleSearchFallback = `https://www.google.com/search?q=${encodeURIComponent(`Pay ₹${amount} to ${upiId} for Kinetix ${planName}`)}`;
-    
     alert(`Initializing secure transaction protocol link for ${planName}.\nAmount: ₹${amount}\nRouting target UPI ID: ${upiId}\n\nRedirecting to secure gateway...`);
-    
     try {
       window.location.href = upiDeepLink;
     } catch (e) {
@@ -63,15 +75,13 @@ export default function KinetixDashboard() {
 
   return (
     <div className="flex h-screen w-screen bg-[#FDFDFD] text-[#0A0A0C] font-sans antialiased overflow-hidden selection:bg-neutral-200">
-      
-      {/* LEFT DASHBOARD PANEL WITH INTERACTIVE MATRIX */}
+
       <aside className="w-64 h-full bg-[#FFFFFF] border-r border-neutral-200/60 p-6 flex flex-col justify-between z-10">
         <div>
           <div className="flex items-center gap-2 mb-8 cursor-pointer" onClick={() => setCurrentTab('home')}>
             <div className="h-6 w-6 rounded-md bg-black flex items-center justify-center text-white font-bold text-xs shadow-md">K</div>
             <span className="font-bold tracking-tight text-lg text-black">Kinetix.ai</span>
           </div>
-
           <nav className="space-y-1">
             {[
               { id: 'home', label: 'Home Matrix' },
@@ -85,10 +95,10 @@ export default function KinetixDashboard() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => { setCurrentTab(tab.id as any); setGenerationStep('idle'); }}
+                onClick={() => { setCurrentTab(tab.id as any); setGenerationStep('idle'); setAgentResult(null); }}
                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  currentTab === tab.id 
-                    ? 'bg-neutral-100 text-black shadow-sm font-semibold' 
+                  currentTab === tab.id
+                    ? 'bg-neutral-100 text-black shadow-sm font-semibold'
                     : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900'
                 }`}
               >
@@ -97,8 +107,6 @@ export default function KinetixDashboard() {
             ))}
           </nav>
         </div>
-
-        {/* COMPUTE BALANCE CAPACITOR PANEL */}
         <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-200/60 shadow-sm">
           <div className="flex justify-between text-xs font-semibold text-neutral-500 mb-1.5">
             <span>ALLOCATED CREDITS</span>
@@ -111,10 +119,9 @@ export default function KinetixDashboard() {
         </div>
       </aside>
 
-      {/* MAIN CONSOLE VIEWPORT MATRIX */}
       <main className="flex-1 h-full overflow-y-auto bg-[#FAFAFA] relative p-12">
-        
-        {/* TAB: HOME MATRIX */}
+
+        {/* HOME */}
         {currentTab === 'home' && (
           <div className="max-w-4xl space-y-12">
             <div className="space-y-5">
@@ -128,62 +135,50 @@ export default function KinetixDashboard() {
               <p className="text-neutral-500 text-lg max-w-2xl leading-relaxed">
                 Deploy end-to-end user interfaces, secure transactional webhooks, logic kernels, and persistent custom databases completely autonomously.
               </p>
-              <button 
+              <button
                 onClick={() => setShowGetStartedModal(true)}
                 className="mt-2 bg-black text-white px-8 py-3.5 rounded-xl text-sm font-semibold shadow-lg shadow-black/10 hover:bg-neutral-900 transition-all hover:-translate-y-0.5 active:translate-y-0"
               >
                 GET STARTED
               </button>
             </div>
-
-            {/* WHAT WE CAN BUILD PANEL MATRIX */}
             <div className="border-t border-neutral-200/60 pt-10 space-y-4">
               <h3 className="text-sm font-bold tracking-widest text-neutral-400 uppercase">Engine Capabilities Infrastructure</h3>
               <div className="grid grid-cols-2 gap-4">
-                {/* FLOATING HOVER CARD 1 */}
                 <div className="p-6 bg-white border border-neutral-200/50 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md hover:border-neutral-400 group cursor-default">
                   <h4 className="font-bold text-base text-neutral-500 group-hover:text-black transition-colors duration-200 mb-1">Dynamic Database Provisioning</h4>
-                  <p className="text-xs text-neutral-400 leading-relaxed group-hover:text-neutral-600 transition-colors duration-200">
-                    Automatically initializes dedicated data tables inside micro-isolated Supabase architecture setups for every individual app generated.
-                  </p>
+                  <p className="text-xs text-neutral-400 leading-relaxed group-hover:text-neutral-600 transition-colors duration-200">Automatically initializes dedicated data tables inside micro-isolated Supabase architecture setups for every individual app generated.</p>
                 </div>
-                {/* FLOATING HOVER CARD 2 */}
                 <div className="p-6 bg-white border border-neutral-200/50 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md hover:border-neutral-400 group cursor-default">
                   <h4 className="font-bold text-base text-neutral-500 group-hover:text-black transition-colors duration-200 mb-1">Stateful URL Route Compilers</h4>
-                  <p className="text-xs text-neutral-400 leading-relaxed group-hover:text-neutral-600 transition-colors duration-200">
-                    Enables dynamic client redirection parameters, binary asset PDF file factory download processes, and third-party Webhook automation loops.
-                  </p>
+                  <p className="text-xs text-neutral-400 leading-relaxed group-hover:text-neutral-600 transition-colors duration-200">Enables dynamic client redirection parameters, binary asset PDF file factory download processes, and third-party Webhook automation loops.</p>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB: WEB APP GENERATOR */}
+        {/* WEB GEN */}
         {currentTab === 'web-gen' && (
           <div className="max-w-4xl space-y-8">
             <div>
               <h2 className="text-2xl font-black tracking-tight text-black">Autonomous Web App Generator</h2>
               <p className="text-xs text-neutral-400">Compile front-end structures, styling layouts, and live component hooks.</p>
             </div>
-
-            {/* ENGINE CONFIGURATION BOX */}
             <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
               <div className="flex gap-4 border-b border-neutral-100 pb-4">
                 <button onClick={() => setActivePlanMode('standard')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${activePlanMode === 'standard' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500'}`}>Standard Mode</button>
                 <button onClick={() => setActivePlanMode('deep-reasoning')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${activePlanMode === 'deep-reasoning' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500'}`}>Deep Reasoning Fabric</button>
               </div>
-
-              <textarea 
+              <textarea
                 value={webPrompt}
                 onChange={(e) => setWebPrompt(e.target.value)}
                 placeholder="e.g., Build a functional medical diagnostics inventory system with real-time data tables and custom billing calculations..."
                 className="w-full h-32 p-4 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none font-mono"
               />
-
               <div className="flex justify-between items-center pt-2">
                 <span className="text-xs font-medium text-neutral-400">Cost: 25 Compute Tokens</span>
-                <button 
+                <button
                   onClick={() => handleStartGeneration(webPrompt, 'web')}
                   disabled={generationStep === 'generating'}
                   className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all disabled:bg-neutral-300"
@@ -192,22 +187,19 @@ export default function KinetixDashboard() {
                 </button>
               </div>
             </div>
-
-            {/* REAL-TIME RUNTIME SANDBOX COMPONENT */}
             {generationStep !== 'idle' && (
-              <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4 animate-fade-in">
+              <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
                 <div className="flex justify-between items-center border-b border-neutral-100 pb-3">
                   <span className="text-xs font-bold text-black tracking-wider uppercase">Vercel Edge Sandbox Terminal</span>
                   <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${generationStep === 'generating' ? 'bg-amber-100 text-amber-700 animate-pulse' : 'bg-emerald-100 text-emerald-700'}`}>
                     {generationStep === 'generating' ? 'COMPILING SOURCE TREE' : 'SANDBOX PROTOTYPE READY'}
                   </span>
                 </div>
-
                 {generationStep === 'generating' ? (
                   <div className="space-y-2 font-mono text-xs text-neutral-400 py-4">
-                    <p className="">[INFO] Initializing sandbox isolate cluster instance...</p>
-                    <p className="">[FABRIC] Binding localized Supabase schemas dynamically...</p>
-                    <p className="">[COMPILER] Injecting UI component trees and operational navigation paths...</p>
+                    <p>[INFO] Initializing sandbox isolate cluster instance...</p>
+                    <p>[FABRIC] Binding localized Supabase schemas dynamically...</p>
+                    <p>[COMPILER] Injecting UI component trees and operational navigation paths...</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -219,7 +211,7 @@ export default function KinetixDashboard() {
                         <span className="text-xs font-bold text-black block">Publish to Cloud Production Routing</span>
                         <span className="text-[11px] text-neutral-400 block">Deploy globally onto a custom subfolder path map.</span>
                       </div>
-                      <button 
+                      <button
                         onClick={() => alert(`Project published securely! Share your production gateway link:\n${generatedUrl}`)}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-xs font-bold transition-all"
                       >
@@ -233,16 +225,15 @@ export default function KinetixDashboard() {
           </div>
         )}
 
-        {/* TAB: SAAS GENERATOR */}
+        {/* SAAS GEN */}
         {currentTab === 'saas-gen' && (
           <div className="max-w-4xl space-y-8">
             <div>
               <h2 className="text-2xl font-black tracking-tight text-black">Production-Grade SaaS Builder</h2>
               <p className="text-xs text-neutral-400">Orchestrate complex cloud multi-tenant applications with subscription gateways and advanced endpoint trees.</p>
             </div>
-
             <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
-              <textarea 
+              <textarea
                 value={saasPrompt}
                 onChange={(e) => setSaasPrompt(e.target.value)}
                 placeholder="Describe your corporate SaaS blueprint rules (e.g., CRM with stripe webhook alerts, multi-tier tenant storage isolation, automated analytics logging)..."
@@ -250,27 +241,62 @@ export default function KinetixDashboard() {
               />
               <div className="flex justify-between items-center">
                 <span className="text-xs font-medium text-neutral-400">Cost: 25 Compute Tokens</span>
-                <button 
+                <button
                   onClick={() => handleStartGeneration(saasPrompt, 'saas')}
-                  className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all"
+                  disabled={generationStep === 'generating'}
+                  className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all disabled:bg-neutral-300"
                 >
-                  Compile SaaS Container
+                  {generationStep === 'generating' ? 'Compiling SaaS Logic...' : 'Compile SaaS Container'}
                 </button>
               </div>
             </div>
+            {generationStep !== 'idle' && (
+              <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex justify-between items-center border-b border-neutral-100 pb-3">
+                  <span className="text-xs font-bold text-black tracking-wider uppercase">SaaS Deployment Engine Console</span>
+                  <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${generationStep === 'generating' ? 'bg-amber-100 text-amber-700 animate-pulse' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {generationStep === 'generating' ? 'PROVISIONING SERVERS' : 'MULTI-TENANT LAYER ONLINE'}
+                  </span>
+                </div>
+                {generationStep === 'generating' ? (
+                  <div className="space-y-2 font-mono text-xs text-neutral-400 py-4">
+                    <p>[INFO] Mounting isolated Docker runtime micro-containers...</p>
+                    <p>[DATABASE] Provisioning dynamic row-level security policies on PostgreSQL...</p>
+                    <p>[STRIPE] Mapping secure transactional webhook configurations...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="w-full h-64 bg-neutral-50 rounded-xl border border-neutral-200 border-dashed flex items-center justify-center text-xs text-neutral-400">
+                      [ Simulated Production-Grade Corporate Dashboard Workspace Window ]
+                    </div>
+                    <div className="flex gap-4 items-center justify-between bg-neutral-50 p-4 rounded-xl border border-neutral-200">
+                      <div>
+                        <span className="text-xs font-bold text-black block">Publish Cloud Cluster Gateway</span>
+                        <span className="text-[11px] text-neutral-400 block">Expose core API routes and tenant dashboards globally.</span>
+                      </div>
+                      <button
+                        onClick={() => alert(`SaaS app deployed onto the Kinetix network architecture:\n${generatedUrl}`)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-xs font-bold transition-all"
+                      >
+                        Launch Live SaaS
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {/* TAB: AUTONOMOUS AGENTS */}
+        {/* AGENT GEN */}
         {currentTab === 'agent-gen' && (
           <div className="max-w-4xl space-y-8">
             <div>
               <h2 className="text-2xl font-black tracking-tight text-black">Autonomous Agent Constructor</h2>
               <p className="text-xs text-neutral-400">Instantiate long-running script processes capable of processing file matrix logic, scheduling tasks, and communicating with web systems.</p>
             </div>
-
             <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
-              <textarea 
+              <textarea
                 value={agentPrompt}
                 onChange={(e) => setAgentPrompt(e.target.value)}
                 placeholder="Specify target task execution flow parameters (e.g., Scan local server file logs every 60 mins, extract metrics data, post summary to internal api)..."
@@ -278,18 +304,79 @@ export default function KinetixDashboard() {
               />
               <div className="flex justify-between items-center">
                 <span className="text-xs font-medium text-neutral-400">Cost: 25 Compute Tokens</span>
-                <button 
+                <button
                   onClick={() => handleStartGeneration(agentPrompt, 'agent')}
-                  className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all"
+                  disabled={generationStep === 'generating'}
+                  className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all disabled:bg-neutral-300"
                 >
-                  Spin Up Engine Agent
+                  {generationStep === 'generating' ? 'Spawning Agent Core...' : 'Spin Up Engine Agent'}
                 </button>
               </div>
             </div>
+
+            {generationStep !== 'idle' && (
+              <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex justify-between items-center border-b border-neutral-100 pb-3">
+                  <span className="text-xs font-bold text-black tracking-wider uppercase">Autonomous Agent Telemetry Monitor</span>
+                  <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${generationStep === 'generating' ? 'bg-amber-100 text-amber-700 animate-pulse' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {generationStep === 'generating' ? 'COMPILING AGENT BRAIN' : 'AGENT EXECUTING WORKFLOW'}
+                  </span>
+                </div>
+
+                {generationStep === 'generating' ? (
+                  <div className="space-y-2 font-mono text-xs text-neutral-400 py-4">
+                    <p>[INFO] Parsing system prompt matrix guardrails...</p>
+                    <p>[ORCHESTRATION] Initializing event listener loops and function calls...</p>
+                    <p>[CONNECT] Establishing data streaming tunnels to central orchestration server...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Telemetry logs from Gemini */}
+                    <div className="w-full h-48 bg-neutral-900 text-emerald-400 p-4 rounded-xl font-mono text-xs space-y-1.5 shadow-inner overflow-y-auto">
+                      <p className="text-neutral-500">// Real-time execution logs active</p>
+                      {agentResult?.telemetryLogs?.map((log: string, i: number) => (
+                        <p key={i}>{log}</p>
+                      ))}
+                      {agentResult?.schedule && <p>[CRON] Schedule: {agentResult.schedule}</p>}
+                      {agentResult?.targetSystems && <p>[CONNECT] Target systems: {agentResult.targetSystems.join(', ')}</p>}
+                    </div>
+
+                    {/* Generated code block */}
+                    {agentResult?.code && (
+                      <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-black">Generated Agent: {agentResult.agentName}</span>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(agentResult.code)}
+                            className="text-xs bg-black text-white px-3 py-1 rounded-lg hover:bg-neutral-800 transition-all"
+                          >
+                            Copy Code
+                          </button>
+                        </div>
+                        <pre className="text-[11px] text-neutral-600 overflow-x-auto whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">{agentResult.code}</pre>
+                      </div>
+                    )}
+
+                    <div className="flex gap-4 items-center justify-between bg-neutral-50 p-4 rounded-xl border border-neutral-200">
+                      <div>
+                        <span className="text-xs font-bold text-black block">Active Agent Operational Status</span>
+                        <span className="text-[11px] text-neutral-400 block">Agent processes run persistently in the background.</span>
+                      </div>
+                      <button
+                        onClick={() => alert(`Agent stream successfully online. Telemetry payload connection secure.`)}
+                        className="bg-neutral-900 hover:bg-neutral-800 text-white px-5 py-2 rounded-lg text-xs font-bold transition-all"
+                      >
+                        Ping Agent Daemon
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {/* TAB: SUBSCRIPTION HUB WITH INTERACTIVE HOVER PANELS */}
+        {/* BILLING */}
         {currentTab === 'billing' && (
           <div className="space-y-8">
             <div>
@@ -297,7 +384,6 @@ export default function KinetixDashboard() {
               <p className="text-neutral-500 text-sm">Select your architectural development lane parameters below.</p>
             </div>
             <div className="grid grid-cols-3 gap-6 max-w-5xl">
-              {/* FREE TIER CARD */}
               <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md hover:border-neutral-400 group">
                 <div>
                   <h3 className="font-bold text-lg text-neutral-400 group-hover:text-black transition-colors duration-200">Free Prototyping</h3>
@@ -310,8 +396,6 @@ export default function KinetixDashboard() {
                 </div>
                 <button className="w-full mt-8 bg-neutral-100 text-neutral-400 py-2.5 rounded-xl text-xs font-bold cursor-not-allowed">Default Framework active</button>
               </div>
-
-              {/* PRO TIER CARD */}
               <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md hover:border-neutral-400 group relative">
                 <div className="absolute -top-2.5 right-6 bg-black text-white text-[9px] tracking-widest font-black px-2.5 py-0.5 rounded-full">POPULAR CHOICE</div>
                 <div>
@@ -323,55 +407,40 @@ export default function KinetixDashboard() {
                     <li>• Automatic automated recurring payment processing link</li>
                   </ul>
                 </div>
-                <button 
-                  onClick={() => executeUPICheckout(500, "Nebula Pro")}
-                  className="w-full mt-8 bg-black text-white py-2.5 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all shadow-md"
-                >
-                  Activate Pro Account
-                </button>
+                <button onClick={() => executeUPICheckout(500, "Nebula Pro")} className="w-full mt-8 bg-black text-white py-2.5 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all shadow-md">Activate Pro Account</button>
               </div>
-
-              {/* PREMIUM TIER CARD */}
               <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md hover:border-neutral-400 group">
                 <div>
                   <h3 className="font-bold text-lg text-neutral-400 group-hover:text-black transition-colors duration-200">Supernova AI</h3>
                   <div className="my-4"><span className="text-3xl font-black">₹1,500</span><span className="text-neutral-400 text-xs"> ($16.70) / mo</span></div>
                   <ul className="text-xs text-neutral-400 group-hover:text-neutral-500 transition-colors duration-200 space-y-2.5">
-                    <li>• **Unlimited** Live Web App Production Allocations</li>
-                    <li>• **Unlimited** Fully Autonomous SaaS Builds</li>
+                    <li>• Unlimited Live Web App Production Allocations</li>
+                    <li>• Unlimited Fully Autonomous SaaS Builds</li>
                     <li>• High-Priority Dedicated Agent Core Execution Pipes</li>
                   </ul>
                 </div>
-                <button 
-                  onClick={() => executeUPICheckout(1500, "Supernova AI")}
-                  className="w-full mt-8 bg-black text-white py-2.5 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all shadow-md"
-                >
-                  Go Premium Enterprise
-                </button>
+                <button onClick={() => executeUPICheckout(1500, "Supernova AI")} className="w-full mt-8 bg-black text-white py-2.5 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all shadow-md">Go Premium Enterprise</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB: COMPLETE SYSTEM DOCUMENTATION & REPREX INDEX */}
+        {/* DOCS */}
         {currentTab === 'docs' && (
           <div className="max-w-3xl space-y-8 prose prose-neutral">
             <div>
               <h2 className="text-3xl font-black tracking-tight text-black mb-1">Documentation & Knowledge Matrix</h2>
               <p className="text-xs text-neutral-400 font-mono">Engine Manual v2.0 // Core API Integration Guidelines</p>
             </div>
-
             <div className="space-y-6 text-sm text-neutral-600 leading-relaxed">
               <section className="bg-white p-6 border border-neutral-200/60 rounded-2xl space-y-2">
                 <h3 className="font-bold text-base text-black">1. Neural Architecture Introduction</h3>
                 <p>The Kinetix engine processes declarative user requirements through multiple specialized sub-agents. These sub-agents coordinate file creation, interface layouts, and database schemas automatically.</p>
               </section>
-
               <section className="bg-white p-6 border border-neutral-200/60 rounded-2xl space-y-2">
                 <h3 className="font-bold text-base text-black">2. Quickstart Execution Guide</h3>
                 <p>To initialize an autonomous project configuration container, input your specific requirements into either the Web App Generator or SaaS Builder console windows. Each request evaluates code structures and generates an active sandbox container in under 5 seconds.</p>
               </section>
-
               <section className="bg-white p-6 border border-neutral-200/60 rounded-2xl space-y-2">
                 <h3 className="font-bold text-base text-black">3. Orchestration Logic & Credit Cycles</h3>
                 <p>Every runtime evaluation or dynamic component update consumes exactly 25 compute tokens from your active account balance. When your credit balance is completely empty, sandbox systems pause execution processes until you upgrade your tier within the Subscription Hub.</p>
@@ -380,20 +449,16 @@ export default function KinetixDashboard() {
           </div>
         )}
 
-        {/* TAB: DEVELOPER API CONSOLE */}
+        {/* API */}
         {currentTab === 'api' && (
           <div className="max-w-3xl space-y-6">
             <div>
               <h2 className="text-2xl font-black tracking-tight text-black">Developer API Matrix & Core Integration</h2>
               <p className="text-xs text-neutral-400">Interact with Kinetix orchestration algorithms programmatically using our unified JSON server token keys.</p>
             </div>
-            
             <div className="bg-white border border-neutral-200 rounded-2xl p-6 space-y-4">
               <h3 className="text-xs font-bold tracking-wider uppercase text-neutral-400">Endpoint References & Core Libraries</h3>
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                Our endpoint tree interfaces directly with cloud architectures, spinning up modular Supabase structures on demand. Use the core libraries framework snippet below to instantiate generation loops from external server files:
-              </p>
-              
+              <p className="text-xs text-neutral-500 leading-relaxed">Our endpoint tree interfaces directly with cloud architectures, spinning up modular Supabase structures on demand. Use the core libraries framework snippet below to instantiate generation loops from external server files:</p>
               <div className="bg-neutral-900 text-neutral-200 p-5 rounded-xl font-mono text-xs overflow-x-auto shadow-inner leading-relaxed">
                 <span className="text-emerald-400">const</span> KinetixSDK = require(<span className="text-amber-300">'@kinetix-ai/core'</span>);<br/>
                 <span className="text-emerald-400">const</span> client = <span className="text-emerald-400">new</span> KinetixSDK(&#123; apiToken: <span className="text-amber-300">'KTX_SECURE_902_ALPHA_LINK'</span> &#125;);<br/><br/>
@@ -407,30 +472,22 @@ export default function KinetixDashboard() {
           </div>
         )}
 
-        {/* TAB: COMPANY INFO */}
+        {/* COMPANY */}
         {currentTab === 'company' && (
           <div className="max-w-3xl space-y-6 bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
             <div>
               <h2 className="text-3xl font-black tracking-tight text-black mb-1">Corporate Profile & Architectural Manifesto</h2>
               <p className="text-xs text-neutral-400 font-mono">Platform Identity Management Record</p>
             </div>
-            
             <div className="text-sm text-neutral-600 space-y-4 leading-relaxed">
-              <p>
-                Kinetix.ai is focused on conversational software orchestration engines. We build AI architectures capable of converting simple language commands directly into production-ready software systems, custom cloud databases, and isolated sandbox execution networks.
-              </p>
-              <p>
-                Our core vision aims to remove technical barriers for developers, creators, and entrepreneurs globally. This allows multi-tier applications to be planned, written, structured, and deployed safely onto web services instantly.
-              </p>
+              <p>Kinetix.ai is focused on conversational software orchestration engines. We build AI architectures capable of converting simple language commands directly into production-ready software systems, custom cloud databases, and isolated sandbox execution networks.</p>
+              <p>Our core vision aims to remove technical barriers for developers, creators, and entrepreneurs globally. This allows multi-tier applications to be planned, written, structured, and deployed safely onto web services instantly.</p>
             </div>
-
             <div className="pt-8 border-t border-neutral-100 flex justify-between items-start">
               <div>
                 <span className="text-xs font-semibold text-neutral-400 uppercase tracking-widest block mb-1">Architect & Principal Founder</span>
                 <span className="text-xl font-black text-black block">Tanish Suresh</span>
-                <p className="text-xs text-neutral-500 mt-2 max-w-lg leading-relaxed">
-                  Distinguished creator behind <strong className="text-black font-semibold">ACELY</strong>, a premium AI-driven academic application stack designed to help students study more effectively through automated material structuring and cross-curriculum knowledge modeling.
-                </p>
+                <p className="text-xs text-neutral-500 mt-2 max-w-lg leading-relaxed">Blazing new paths in technical automation and modular software development systems.</p>
               </div>
               <div className="bg-neutral-50 p-4 border border-neutral-200 rounded-xl text-right">
                 <span className="text-[10px] font-bold text-neutral-400 block uppercase">Project Pipeline Track</span>
@@ -440,25 +497,21 @@ export default function KinetixDashboard() {
           </div>
         )}
 
-        {/* BOTTOM REDIRECTION STACK BLACK GAP */}
         <div className="mt-16 bg-black text-neutral-400 p-8 rounded-2xl flex justify-between items-center shadow-lg">
           <div className="space-y-1">
             <span className="text-white font-bold text-sm tracking-tight block">Ready to scale beyond the baseline constraints?</span>
             <span className="text-xs text-neutral-500 block">Deploy custom API gateways, unlimited database structures, and high-frequency agents instantly.</span>
           </div>
-          <button 
-            onClick={() => setCurrentTab('billing')}
-            className="bg-white text-black px-5 py-2 rounded-xl text-xs font-bold hover:bg-neutral-100 transition-all"
-          >
+          <button onClick={() => setCurrentTab('billing')} className="bg-white text-black px-5 py-2 rounded-xl text-xs font-bold hover:bg-neutral-100 transition-all">
             Upgrade System Speed Matrix
           </button>
         </div>
 
       </main>
 
-      {/* GET STARTED PROMPT ENTRY POPUP PORTAL */}
+      {/* GET STARTED MODAL */}
       {showGetStartedModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="bg-white border border-neutral-200 rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-6">
             <div className="flex justify-between items-start">
               <div>
@@ -467,14 +520,12 @@ export default function KinetixDashboard() {
               </div>
               <button onClick={() => setShowGetStartedModal(false)} className="text-neutral-400 hover:text-black font-bold text-sm">✕</button>
             </div>
-
             <div className="space-y-3">
-              <button onClick={() => { setCurrentTab('web-gen'); setShowGetStartedModal(false); }} className="w-full p-4 border border-neutral-200 hover:border-black rounded-xl text-left transition-all group">
+              <button onClick={() => { setCurrentTab('web-gen'); setShowGetStartedModal(false); }} className="w-full p-4 border border-neutral-200 hover:border-black rounded-xl text-left transition-all">
                 <span className="font-bold text-sm text-black block">Web App / UI Template Generator</span>
                 <span className="text-xs text-neutral-400 block mt-0.5">Creates functional components, layouts, styling presets, and client states.</span>
               </button>
-              
-              <button onClick={() => { setCurrentTab('saas-gen'); setShowGetStartedModal(false); }} className="w-full p-4 border border-neutral-200 hover:border-black rounded-xl text-left transition-all group">
+              <button onClick={() => { setCurrentTab('saas-gen'); setShowGetStartedModal(false); }} className="w-full p-4 border border-neutral-200 hover:border-black rounded-xl text-left transition-all">
                 <span className="font-bold text-sm text-black block">Production Grade SaaS Platform Builder</span>
                 <span className="text-xs text-neutral-400 block mt-0.5">Generates deep infrastructure trees, API endpoints, webhook listeners, and database tables.</span>
               </button>
