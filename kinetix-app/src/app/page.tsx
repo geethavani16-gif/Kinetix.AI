@@ -40,15 +40,15 @@ export default function KinetixDashboard() {
         });
         const data = await res.json();
         if (data.error) {
-          alert('Agent generation failed: ' + data.error);
+          alert('Error: ' + data.error);
           setGenerationStep('idle');
           return;
         }
         setAgentResult(data);
         setGenerationStep('prototype');
-      } catch {
+      } catch (err: any) {
         setGenerationStep('idle');
-        alert('Agent generation failed. Check your API key in Vercel environment variables.');
+        alert('Network error: ' + err.message);
       }
     } else {
       setTimeout(() => {
@@ -76,6 +76,7 @@ export default function KinetixDashboard() {
   return (
     <div className="flex h-screen w-screen bg-[#FDFDFD] text-[#0A0A0C] font-sans antialiased overflow-hidden selection:bg-neutral-200">
 
+      {/* SIDEBAR */}
       <aside className="w-64 h-full bg-[#FFFFFF] border-r border-neutral-200/60 p-6 flex flex-col justify-between z-10">
         <div>
           <div className="flex items-center gap-2 mb-8 cursor-pointer" onClick={() => setCurrentTab('home')}>
@@ -119,6 +120,7 @@ export default function KinetixDashboard() {
         </div>
       </aside>
 
+      {/* MAIN */}
       <main className="flex-1 h-full overflow-y-auto bg-[#FAFAFA] relative p-12">
 
         {/* HOME */}
@@ -322,7 +324,6 @@ export default function KinetixDashboard() {
                     {generationStep === 'generating' ? 'COMPILING AGENT BRAIN' : 'AGENT EXECUTING WORKFLOW'}
                   </span>
                 </div>
-
                 {generationStep === 'generating' ? (
                   <div className="space-y-2 font-mono text-xs text-neutral-400 py-4">
                     <p>[INFO] Parsing system prompt matrix guardrails...</p>
@@ -331,7 +332,6 @@ export default function KinetixDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Telemetry logs from Gemini */}
                     <div className="w-full h-48 bg-neutral-900 text-emerald-400 p-4 rounded-xl font-mono text-xs space-y-1.5 shadow-inner overflow-y-auto">
                       <p className="text-neutral-500">// Real-time execution logs active</p>
                       {agentResult?.telemetryLogs?.map((log: string, i: number) => (
@@ -340,8 +340,6 @@ export default function KinetixDashboard() {
                       {agentResult?.schedule && <p>[CRON] Schedule: {agentResult.schedule}</p>}
                       {agentResult?.targetSystems && <p>[CONNECT] Target systems: {agentResult.targetSystems.join(', ')}</p>}
                     </div>
-
-                    {/* Generated code block */}
                     {agentResult?.code && (
                       <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-2">
                         <div className="flex justify-between items-center">
@@ -356,7 +354,6 @@ export default function KinetixDashboard() {
                         <pre className="text-[11px] text-neutral-600 overflow-x-auto whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">{agentResult.code}</pre>
                       </div>
                     )}
-
                     <div className="flex gap-4 items-center justify-between bg-neutral-50 p-4 rounded-xl border border-neutral-200">
                       <div>
                         <span className="text-xs font-bold text-black block">Active Agent Operational Status</span>
@@ -497,6 +494,7 @@ export default function KinetixDashboard() {
           </div>
         )}
 
+        {/* FOOTER CTA */}
         <div className="mt-16 bg-black text-neutral-400 p-8 rounded-2xl flex justify-between items-center shadow-lg">
           <div className="space-y-1">
             <span className="text-white font-bold text-sm tracking-tight block">Ready to scale beyond the baseline constraints?</span>
