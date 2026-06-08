@@ -1,5 +1,9 @@
 {
   "devDependencies": {
     "@types/googlepay": "^0.7.10"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^7.4.2",
+    "lucide-react": "^1.17.0"
   }
 }
