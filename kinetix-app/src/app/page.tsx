@@ -18,8 +18,56 @@ export default function KinetixDashboard() {
   const [clarificationAnswers, setClarificationAnswers] = useState('');
   const [awaitingClarification, setAwaitingClarification] = useState(false);
   const [envVarValues, setEnvVarValues] = useState<Record<string, string>>({});
+  const [finalizedResult, setFinalizedResult] = useState<any>(null);
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
   const { credits, deductCredits } = useKinetix();
+
+  const handleFinalizeAgent = async () => {
+    if (!agentResult?.code) return;
+
+    const missing = (agentResult.envVarsNeeded || []).filter((k: string) => !envVarValues[k]?.trim());
+    if (missing.length > 0) {
+      alert('Please fill in all credential fields before finalizing: ' + missing.join(', '));
+      return;
+    }
+
+    setIsFinalizing(true);
+    setFinalizedResult(null);
+
+    try {
+      const res = await fetch('/api/generate-agent', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'finalize',
+          code: agentResult.code,
+          envVars: envVarValues,
+          agentName: agentResult.agentName,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        alert('Server error during finalize: ' + text.slice(0, 300));
+        setIsFinalizing(false);
+        return;
+      }
+
+      const data = await res.json();
+      if (data.error) {
+        alert('Finalize error: ' + data.error);
+        setIsFinalizing(false);
+        return;
+      }
+
+      setFinalizedResult(data);
+    } catch (err: any) {
+      alert('Network error during finalize: ' + err.message);
+    } finally {
+      setIsFinalizing(false);
+    }
+  };
 
   const handleStartGeneration = async (promptText: string, type: 'web' | 'saas' | 'agent', answers?: string) => {
     if (!promptText.trim()) {
