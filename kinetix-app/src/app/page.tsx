@@ -33,6 +33,7 @@ export default function KinetixDashboard() {
 
     if (type === 'agent') {
       setAgentResult(null);
+      setEnvVarValues({});
       setGenerationStep('generating');
 
       try {
@@ -92,6 +93,20 @@ export default function KinetixDashboard() {
     handleStartGeneration(agentPrompt, 'agent', clarificationAnswers);
   };
 
+  const downloadEnvFile = () => {
+    if (!agentResult?.envVarsNeeded) return;
+    const envFile = agentResult.envVarsNeeded
+      .map((key: string) => `${key}=${envVarValues[key] || 'PASTE_VALUE_HERE'}`)
+      .join('\n');
+    const blob = new Blob([envFile], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '.env';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const executeUPICheckout = (amount: number, planName: string) => {
     const upiId = "geethavani16@oksbi";
     const payeeName = "Tanish Suresh";
@@ -128,7 +143,7 @@ export default function KinetixDashboard() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => { setCurrentTab(tab.id as any); setGenerationStep('idle'); setAgentResult(null); setAwaitingClarification(false); setClarificationQuestions([]); setClarificationAnswers(''); }}
+                onClick={() => { setCurrentTab(tab.id as any); setGenerationStep('idle'); setAgentResult(null); setAwaitingClarification(false); setClarificationQuestions([]); setClarificationAnswers(''); setEnvVarValues({}); }}
                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   currentTab === tab.id
                     ? 'bg-neutral-100 text-black shadow-sm font-semibold'
@@ -390,26 +405,51 @@ export default function KinetixDashboard() {
                       {agentResult?.schedule && <p>[CRON] Schedule: {agentResult.schedule}</p>}
                       {agentResult?.targetSystems && <p>[CONNECT] Target systems: {agentResult.targetSystems.join(', ')}</p>}
                     </div>
+
                     {agentResult?.envVarsNeeded?.length > 0 && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                        <p className="text-xs font-bold text-amber-800 mb-2">Environment Variables Required</p>
-                        <div className="flex flex-wrap gap-2">
-                          {agentResult.envVarsNeeded.map((v: string, i: number) => (
-                            <span key={i} className="bg-amber-100 text-amber-700 text-[11px] font-mono px-2 py-0.5 rounded">{v}</span>
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+                        <div>
+                          <p className="text-xs font-bold text-amber-800 mb-1">Environment Variables Required</p>
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {agentResult.envVarsNeeded.map((v: string, i: number) => (
+                              <span key={i} className="bg-amber-100 text-amber-700 text-[11px] font-mono px-2 py-0.5 rounded">{v}</span>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-amber-600">Enter your real credentials below. They stay in your browser only — never sent to our servers.</p>
+                        </div>
+
+                        <div className="space-y-2 pt-2 border-t border-amber-200">
+                          {agentResult.envVarsNeeded.map((key: string) => (
+                            <div key={key}>
+                              <label className="text-[10px] font-mono text-amber-700 block mb-1">{key}</label>
+                              <input
+                                type="text"
+                                value={envVarValues[key] || ''}
+                                onChange={(e) => setEnvVarValues(prev => ({ ...prev, [key]: e.target.value }))}
+                                placeholder={`Paste your ${key} here`}
+                                className="w-full p-2.5 bg-white border border-amber-200 rounded-lg text-xs font-mono focus:outline-none focus:border-amber-400"
+                              />
+                            </div>
                           ))}
                         </div>
-                        <p className="text-[10px] text-amber-600 mt-2">Add these to your .env file or Vercel environment variables before running the agent.</p>
                       </div>
                     )}
+
                     {agentResult?.code && (
                       <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-xs font-bold text-black">Generated Agent: {agentResult.agentName}</span>
-                          <button onClick={() => navigator.clipboard.writeText(agentResult.code)} className="text-xs bg-black text-white px-3 py-1 rounded-lg hover:bg-neutral-800 transition-all">Copy Code</button>
+                          <div className="flex gap-2">
+                            {agentResult.envVarsNeeded?.length > 0 && (
+                              <button onClick={downloadEnvFile} className="text-xs bg-neutral-200 text-neutral-700 px-3 py-1 rounded-lg hover:bg-neutral-300 transition-all">Download .env</button>
+                            )}
+                            <button onClick={() => navigator.clipboard.writeText(agentResult.code)} className="text-xs bg-black text-white px-3 py-1 rounded-lg hover:bg-neutral-800 transition-all">Copy Code</button>
+                          </div>
                         </div>
                         <pre className="text-[11px] text-neutral-600 overflow-x-auto whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">{agentResult.code}</pre>
                       </div>
                     )}
+
                     <div className="flex gap-4 items-center justify-between bg-neutral-50 p-4 rounded-xl border border-neutral-200">
                       <div>
                         <span className="text-xs font-bold text-black block">Active Agent Operational Status</span>
