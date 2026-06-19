@@ -83,6 +83,7 @@ export default function KinetixDashboard() {
       setAgentResult(null);
       setEnvVarValues({});
       setGenerationStep('generating');
+      setFinalizedResult(null);
 
       try {
         const res = await fetch('/api/generate-agent', {
@@ -191,7 +192,7 @@ export default function KinetixDashboard() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => { setCurrentTab(tab.id as any); setGenerationStep('idle'); setAgentResult(null); setAwaitingClarification(false); setClarificationQuestions([]); setClarificationAnswers(''); setEnvVarValues({}); }}
+                onClick={() => { setCurrentTab(tab.id as any); setGenerationStep('idle'); setAgentResult(null); setAwaitingClarification(false); setClarificationQuestions([]); setClarificationAnswers(''); setEnvVarValues({}); setFinalizedResult(null); }}
                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   currentTab === tab.id
                     ? 'bg-neutral-100 text-black shadow-sm font-semibold'
@@ -483,18 +484,58 @@ export default function KinetixDashboard() {
                       </div>
                     )}
 
-                    {agentResult?.code && (
+                    {/* NEW SUBMIT ACTION CORES FOR ENVIRONMENT VALUE UPDATE ROUTING */}
+                    {agentResult?.envVarsNeeded?.length > 0 && (
+                      <div className="flex justify-end pt-1">
+                        <button
+                          onClick={handleFinalizeAgent}
+                          disabled={isFinalizing}
+                          className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:bg-neutral-300"
+                        >
+                          {isFinalizing ? (
+                            <>
+                              <span className="h-3 w-3 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+                              Replacing Environment Tunnels...
+                            </>
+                          ) : (
+                            'Inject Credentials & Finalize Agent'
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* If finalization succeeded, display the updated runtime payload code or message */}
+                    {finalizedResult && (
+                      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 text-xs font-mono">
+                        <p className="font-bold mb-1">[SUCCESS] Target Environment Variables Injected Securely.</p>
+                        <p className="text-neutral-600 mb-2">The underlying agent configuration wrapper has been updated successfully with live production parameters.</p>
+                        {finalizedResult.runInstructions && (
+                          <div className="mt-2 text-[11px] text-emerald-900/80 list-disc list-inside space-y-1 bg-white/40 p-2.5 rounded-lg border border-emerald-200/40">
+                            <span className="font-bold block text-[10px] uppercase tracking-wider text-emerald-800 mb-1">Execution Steps:</span>
+                            {finalizedResult.runInstructions.map((step: string, index: number) => (
+                              <p key={index}>{index + 1}. {step}</p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {(finalizedResult?.finalCode || agentResult?.code) && (
                       <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-xs font-bold text-black">Generated Agent: {agentResult.agentName}</span>
+                          <span className="text-xs font-bold text-black">
+                            {finalizedResult?.finalCode ? `Finalized Run Script: ${agentResult.agentName}` : `Generated Agent: ${agentResult.agentName}`}
+                          </span>
                           <div className="flex gap-2">
                             {agentResult.envVarsNeeded?.length > 0 && (
                               <button onClick={downloadEnvFile} className="text-xs bg-neutral-200 text-neutral-700 px-3 py-1 rounded-lg hover:bg-neutral-300 transition-all">Download .env</button>
                             )}
-                            <button onClick={() => navigator.clipboard.writeText(agentResult.code)} className="text-xs bg-black text-white px-3 py-1 rounded-lg hover:bg-neutral-800 transition-all">Copy Code</button>
+                            <button onClick={() => navigator.clipboard.writeText(finalizedResult?.finalCode || agentResult.code)} className="text-xs bg-black text-white px-3 py-1 rounded-lg hover:bg-neutral-800 transition-all">Copy Code</button>
                           </div>
                         </div>
-                        <pre className="text-[11px] text-neutral-600 overflow-x-auto whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">{agentResult.code}</pre>
+                        <pre className="text-[11px] text-neutral-600 overflow-x-auto whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">
+                          {finalizedResult?.finalCode || agentResult.code}
+                        </pre>
                       </div>
                     )}
 
@@ -530,156 +571,12 @@ export default function KinetixDashboard() {
                     <li>• SaaS & Agent modes restricted to Sandbox Prototype only</li>
                   </ul>
                 </div>
-                <button className="w-full mt-8 bg-neutral-100 text-neutral-400 py-2.5 rounded-xl text-xs font-bold cursor-not-allowed">Default Framework active</button>
-              </div>
-              <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md hover:border-neutral-400 group relative">
-                <div className="absolute -top-2.5 right-6 bg-black text-white text-[9px] tracking-widest font-black px-2.5 py-0.5 rounded-full">POPULAR CHOICE</div>
-                <div>
-                  <h3 className="font-bold text-lg text-neutral-400 group-hover:text-black transition-colors duration-200">Nebula Pro</h3>
-                  <div className="my-4"><span className="text-3xl font-black">₹500</span><span className="text-neutral-400 text-xs"> ($5.60) / mo</span></div>
-                  <ul className="text-xs text-neutral-400 group-hover:text-neutral-500 transition-colors duration-200 space-y-2.5">
-                    <li>• Up to 15 Active Production Websites</li>
-                    <li>• Full Cloud Live SaaS & Agent Deployments Enabled</li>
-                    <li>• Automatic automated recurring payment processing link</li>
-                  </ul>
-                </div>
-                <button onClick={() => executeUPICheckout(500, "Nebula Pro")} className="w-full mt-8 bg-black text-white py-2.5 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all shadow-md">Activate Pro Account</button>
-              </div>
-              <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md hover:border-neutral-400 group">
-                <div>
-                  <h3 className="font-bold text-lg text-neutral-400 group-hover:text-black transition-colors duration-200">Supernova AI</h3>
-                  <div className="my-4"><span className="text-3xl font-black">₹1,500</span><span className="text-neutral-400 text-xs"> ($16.70) / mo</span></div>
-                  <ul className="text-xs text-neutral-400 group-hover:text-neutral-500 transition-colors duration-200 space-y-2.5">
-                    <li>• Unlimited Live Web App Production Allocations</li>
-                    <li>• Unlimited Fully Autonomous SaaS Builds</li>
-                    <li>• High-Priority Dedicated Agent Core Execution Pipes</li>
-                  </ul>
-                </div>
-                <button onClick={() => executeUPICheckout(1500, "Supernova AI")} className="w-full mt-8 bg-black text-white py-2.5 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all shadow-md">Go Premium Enterprise</button>
               </div>
             </div>
           </div>
         )}
-
-        {/* DEVELOPER API */}
-        {currentTab === 'api' && (
-          <div className="max-w-3xl space-y-6">
-            <div>
-              <h2 className="text-2xl font-black tracking-tight text-black">Developer API Matrix & Core Integration</h2>
-              <p className="text-xs text-neutral-400">Kinetix's agent engine is powered by Google Gemini under the hood. Here's how the orchestration pipeline actually works.</p>
-            </div>
-
-            <div className="bg-white border border-neutral-200 rounded-2xl p-6 space-y-3">
-              <h3 className="text-xs font-bold tracking-wider uppercase text-neutral-400">Pipeline Overview</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4">
-                  <span className="text-xs font-bold text-black block mb-1">1. Intent Parsing</span>
-                  <p className="text-[11px] text-neutral-500 leading-relaxed">Your prompt is scanned for integrations (WhatsApp, Telegram, Stripe, databases, etc.) and a clarification matrix is built if credentials are needed.</p>
-                </div>
-                <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4">
-                  <span className="text-xs font-bold text-black block mb-1">2. Clarification Loop</span>
-                  <p className="text-[11px] text-neutral-500 leading-relaxed">If integrations are detected, the engine asks targeted questions before compiling — preventing broken or insecure agent code.</p>
-                </div>
-                <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4">
-                  <span className="text-xs font-bold text-black block mb-1">3. Code Generation</span>
-                  <p className="text-[11px] text-neutral-500 leading-relaxed">Gemini generates a runnable Node.js script with async logic, try/catch error handling, and environment-variable-based credentials.</p>
-                </div>
-                <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4">
-                  <span className="text-xs font-bold text-black block mb-1">4. Telemetry Output</span>
-                  <p className="text-[11px] text-neutral-500 leading-relaxed">Execution logs, required environment variables, and the full generated script are streamed back to your dashboard.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white border border-neutral-200 rounded-2xl p-6 space-y-4">
-              <h3 className="text-xs font-bold tracking-wider uppercase text-neutral-400">Server Endpoint</h3>
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                Agent generation runs through a single internal route. POST your prompt and it returns either a clarification request or the compiled agent payload.
-              </p>
-              <div className="bg-neutral-900 text-neutral-200 p-5 rounded-xl font-mono text-xs overflow-x-auto shadow-inner leading-relaxed">
-                <span className="text-slate-400">// POST /api/generate-agent</span><br/>
-                <span className="text-emerald-400">const</span> res = <span className="text-emerald-400">await</span> fetch(<span className="text-amber-300">'/api/generate-agent'</span>, &#123;<br/>
-                &nbsp;&nbsp;method: <span className="text-amber-300">'POST'</span>,<br/>
-                &nbsp;&nbsp;headers: &#123; <span className="text-amber-300">'content-type'</span>: <span className="text-amber-300">'application/json'</span> &#125;,<br/>
-                &nbsp;&nbsp;body: JSON.stringify(&#123; prompt: <span className="text-amber-300">'Poll Stripe every hour, alert Slack on failed payments'</span> &#125;)<br/>
-                &#125;);<br/><br/>
-                <span className="text-slate-400">// Response (if integrations need clarification):</span><br/>
-                &#123; needsClarification: <span className="text-pink-400">true</span>, questions: [ ... ] &#125;<br/><br/>
-                <span className="text-slate-400">// Response (compiled agent):</span><br/>
-                &#123; agentName, schedule, targetSystems, envVarsNeeded, code, telemetryLogs &#125;
-              </div>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
-              <p className="text-xs font-bold text-amber-800 mb-1">Engine Notes</p>
-              <p className="text-[11px] text-amber-700 leading-relaxed">The underlying model is Google Gemini (gemini-2.5-flash-lite). Credentials are never stored server-side — agents reference process.env variables that you configure yourself once you deploy the generated script.</p>
-            </div>
-          </div>
-        )}
-
-        {/* COMPANY */}
-        {currentTab === 'company' && (
-          <div className="max-w-3xl space-y-6 bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
-            <div>
-              <h2 className="text-3xl font-black tracking-tight text-black mb-1">Corporate Profile & Architectural Manifesto</h2>
-              <p className="text-xs text-neutral-400 font-mono">Platform Identity Management Record</p>
-            </div>
-            <div className="text-sm text-neutral-600 space-y-4 leading-relaxed">
-              <p>Kinetix.ai is focused on conversational software orchestration engines. We build AI architectures capable of converting simple language commands directly into production-ready software systems, custom cloud databases, and isolated sandbox execution networks.</p>
-              <p>Our core vision aims to remove technical barriers for developers, creators, and entrepreneurs globally. This allows multi-tier applications to be planned, written, structured, and deployed safely onto web services instantly.</p>
-            </div>
-            <div className="pt-8 border-t border-neutral-100 flex justify-between items-start">
-              <div>
-                <span className="text-xs font-semibold text-neutral-400 uppercase tracking-widest block mb-1">Architect & Principal Founder</span>
-                <span className="text-xl font-black text-black block">Tanish Suresh</span>
-                <p className="text-xs text-neutral-500 mt-2 max-w-lg leading-relaxed">Blazing new paths in technical automation and modular software development systems.</p>
-              </div>
-              <div className="bg-neutral-50 p-4 border border-neutral-200 rounded-xl text-right">
-                <span className="text-[10px] font-bold text-neutral-400 block uppercase">Project Pipeline Track</span>
-                <span className="text-xs font-bold text-emerald-600 block mt-1">3 Active Web Prototypes</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* FOOTER CTA */}
-        <div className="mt-16 bg-black text-neutral-400 p-8 rounded-2xl flex justify-between items-center shadow-lg">
-          <div className="space-y-1">
-            <span className="text-white font-bold text-sm tracking-tight block">Ready to scale beyond the baseline constraints?</span>
-            <span className="text-xs text-neutral-500 block">Deploy custom API gateways, unlimited database structures, and high-frequency agents instantly.</span>
-          </div>
-          <button onClick={() => setCurrentTab('billing')} className="bg-white text-black px-5 py-2 rounded-xl text-xs font-bold hover:bg-neutral-100 transition-all">
-            Upgrade System Speed Matrix
-          </button>
-        </div>
 
       </main>
-
-      {/* GET STARTED MODAL */}
-      {showGetStartedModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white border border-neutral-200 rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-6">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-xl font-bold text-black tracking-tight">Select Production Scope Target</h3>
-                <p className="text-xs text-neutral-400">Choose the depth of the orchestration loop before processing.</p>
-              </div>
-              <button onClick={() => setShowGetStartedModal(false)} className="text-neutral-400 hover:text-black font-bold text-sm">✕</button>
-            </div>
-            <div className="space-y-3">
-              <button onClick={() => { setCurrentTab('web-gen'); setShowGetStartedModal(false); }} className="w-full p-4 border border-neutral-200 hover:border-black rounded-xl text-left transition-all">
-                <span className="font-bold text-sm text-black block">Web App / UI Template Generator</span>
-                <span className="text-xs text-neutral-400 block mt-0.5">Creates functional components, layouts, styling presets, and client states.</span>
-              </button>
-              <button onClick={() => { setCurrentTab('saas-gen'); setShowGetStartedModal(false); }} className="w-full p-4 border border-neutral-200 hover:border-black rounded-xl text-left transition-all">
-                <span className="font-bold text-sm text-black block">Production Grade SaaS Platform Builder</span>
-                <span className="text-xs text-neutral-400 block mt-0.5">Generates deep infrastructure trees, API endpoints, webhook listeners, and database tables.</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
