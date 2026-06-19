@@ -17,6 +17,7 @@ export default function KinetixDashboard() {
   const [clarificationQuestions, setClarificationQuestions] = useState<string[]>([]);
   const [clarificationAnswers, setClarificationAnswers] = useState('');
   const [awaitingClarification, setAwaitingClarification] = useState(false);
+  const [envVarValues, setEnvVarValues] = useState<Record<string, string>>({});
 
   const { credits, deductCredits } = useKinetix();
 
