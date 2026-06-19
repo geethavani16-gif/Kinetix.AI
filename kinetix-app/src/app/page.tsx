@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useKinetix } from './context/KinetixContext';
 
 export default function KinetixDashboard() {
-  const [currentTab, setCurrentTab] = useState<'home' | 'web-gen' | 'saas-gen' | 'agent-gen' | 'billing' | 'docs' | 'api' | 'company'>('home');
+  const [currentTab, setCurrentTab] = useState<'home' | 'web-gen' | 'saas-gen' | 'agent-gen' | 'billing' | 'api' | 'company'>('home');
   const [showGetStartedModal, setShowGetStartedModal] = useState(false);
 
   const [webPrompt, setWebPrompt] = useState('');
@@ -43,7 +43,7 @@ export default function KinetixDashboard() {
 
         if (!res.ok) {
           const text = await res.text();
-          alert('Server error: ' + text.slice(0, 200));
+          alert('Server error: ' + text.slice(0, 300));
           setGenerationStep('idle');
           return;
         }
@@ -123,7 +123,6 @@ export default function KinetixDashboard() {
               { id: 'agent-gen', label: 'Autonomous Agents' },
               { id: 'billing', label: 'Subscription Hub' },
               { id: 'api', label: 'Developer API' },
-              { id: 'docs', label: 'Documentation & Blog' },
               { id: 'company', label: 'Company Info' }
             ].map((tab) => (
               <button
@@ -320,7 +319,6 @@ export default function KinetixDashboard() {
               <p className="text-xs text-neutral-400">Instantiate long-running script processes capable of processing file matrix logic, scheduling tasks, and communicating with web systems.</p>
             </div>
 
-            {/* Prompt input — always visible */}
             <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
               <textarea
                 value={agentPrompt}
@@ -340,7 +338,6 @@ export default function KinetixDashboard() {
               </div>
             </div>
 
-            {/* Clarification questions panel */}
             {awaitingClarification && clarificationQuestions.length > 0 && (
               <div className="bg-white border border-amber-200 rounded-2xl p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
@@ -358,27 +355,16 @@ export default function KinetixDashboard() {
                 <textarea
                   value={clarificationAnswers}
                   onChange={(e) => setClarificationAnswers(e.target.value)}
-                  placeholder="Type your answers here, numbered to match the questions above (e.g. 1. Yes, I have a Twilio SID: ACXXXXX  2. Using SendGrid, key is SG.XXXXX)..."
+                  placeholder="Type your answers here, numbered to match the questions above..."
                   className="w-full h-28 p-4 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none font-mono"
                 />
                 <div className="flex gap-3">
-                  <button
-                    onClick={handleSubmitClarification}
-                    className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all"
-                  >
-                    Submit & Compile Agent
-                  </button>
-                  <button
-                    onClick={() => { setAwaitingClarification(false); setClarificationQuestions([]); setClarificationAnswers(''); handleStartGeneration(agentPrompt, 'agent', 'skip'); }}
-                    className="bg-neutral-100 text-neutral-500 px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-200 transition-all"
-                  >
-                    Skip & Use Placeholders
-                  </button>
+                  <button onClick={handleSubmitClarification} className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all">Submit & Compile Agent</button>
+                  <button onClick={() => { setAwaitingClarification(false); setClarificationQuestions([]); setClarificationAnswers(''); handleStartGeneration(agentPrompt, 'agent', 'skip'); }} className="bg-neutral-100 text-neutral-500 px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-200 transition-all">Skip & Use Placeholders</button>
                 </div>
               </div>
             )}
 
-            {/* Telemetry output */}
             {generationStep !== 'idle' && (
               <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
                 <div className="flex justify-between items-center border-b border-neutral-100 pb-3">
@@ -418,12 +404,7 @@ export default function KinetixDashboard() {
                       <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-xs font-bold text-black">Generated Agent: {agentResult.agentName}</span>
-                          <button
-                            onClick={() => navigator.clipboard.writeText(agentResult.code)}
-                            className="text-xs bg-black text-white px-3 py-1 rounded-lg hover:bg-neutral-800 transition-all"
-                          >
-                            Copy Code
-                          </button>
+                          <button onClick={() => navigator.clipboard.writeText(agentResult.code)} className="text-xs bg-black text-white px-3 py-1 rounded-lg hover:bg-neutral-800 transition-all">Copy Code</button>
                         </div>
                         <pre className="text-[11px] text-neutral-600 overflow-x-auto whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">{agentResult.code}</pre>
                       </div>
@@ -491,49 +472,58 @@ export default function KinetixDashboard() {
           </div>
         )}
 
-        {/* DOCS */}
-        {currentTab === 'docs' && (
-          <div className="max-w-3xl space-y-8 prose prose-neutral">
-            <div>
-              <h2 className="text-3xl font-black tracking-tight text-black mb-1">Documentation & Knowledge Matrix</h2>
-              <p className="text-xs text-neutral-400 font-mono">Engine Manual v2.0 // Core API Integration Guidelines</p>
-            </div>
-            <div className="space-y-6 text-sm text-neutral-600 leading-relaxed">
-              <section className="bg-white p-6 border border-neutral-200/60 rounded-2xl space-y-2">
-                <h3 className="font-bold text-base text-black">1. Neural Architecture Introduction</h3>
-                <p>The Kinetix engine processes declarative user requirements through multiple specialized sub-agents. These sub-agents coordinate file creation, interface layouts, and database schemas automatically.</p>
-              </section>
-              <section className="bg-white p-6 border border-neutral-200/60 rounded-2xl space-y-2">
-                <h3 className="font-bold text-base text-black">2. Quickstart Execution Guide</h3>
-                <p>To initialize an autonomous project configuration container, input your specific requirements into either the Web App Generator or SaaS Builder console windows. Each request evaluates code structures and generates an active sandbox container in under 5 seconds.</p>
-              </section>
-              <section className="bg-white p-6 border border-neutral-200/60 rounded-2xl space-y-2">
-                <h3 className="font-bold text-base text-black">3. Orchestration Logic & Credit Cycles</h3>
-                <p>Every runtime evaluation or dynamic component update consumes exactly 25 compute tokens from your active account balance. When your credit balance is completely empty, sandbox systems pause execution processes until you upgrade your tier within the Subscription Hub.</p>
-              </section>
-            </div>
-          </div>
-        )}
-
-        {/* API */}
+        {/* DEVELOPER API */}
         {currentTab === 'api' && (
           <div className="max-w-3xl space-y-6">
             <div>
               <h2 className="text-2xl font-black tracking-tight text-black">Developer API Matrix & Core Integration</h2>
-              <p className="text-xs text-neutral-400">Interact with Kinetix orchestration algorithms programmatically using our unified JSON server token keys.</p>
+              <p className="text-xs text-neutral-400">Kinetix's agent engine is powered by Google Gemini under the hood. Here's how the orchestration pipeline actually works.</p>
             </div>
-            <div className="bg-white border border-neutral-200 rounded-2xl p-6 space-y-4">
-              <h3 className="text-xs font-bold tracking-wider uppercase text-neutral-400">Endpoint References & Core Libraries</h3>
-              <p className="text-xs text-neutral-500 leading-relaxed">Our endpoint tree interfaces directly with cloud architectures, spinning up modular Supabase structures on demand.</p>
-              <div className="bg-neutral-900 text-neutral-200 p-5 rounded-xl font-mono text-xs overflow-x-auto shadow-inner leading-relaxed">
-                <span className="text-emerald-400">const</span> KinetixSDK = require(<span className="text-amber-300">'@kinetix-ai/core'</span>);<br/>
-                <span className="text-emerald-400">const</span> client = <span className="text-emerald-400">new</span> KinetixSDK(&#123; apiToken: <span className="text-amber-300">'KTX_SECURE_902_ALPHA_LINK'</span> &#125;);<br/><br/>
-                <span className="text-slate-400">// Initialize an isolated full-stack system pipeline</span><br/>
-                <span className="text-emerald-400">const</span> projectInstance = <span className="text-emerald-400">await</span> client.compile.container(&#123;<br/>
-                &nbsp;&nbsp;blueprintType: <span className="text-amber-300">'saas-production'</span>,<br/>
-                &nbsp;&nbsp;promptInput: <span className="text-amber-300">'Build high-performance billing tracking hub with PDF extraction systems'</span><br/>
-                &#125;);
+
+            <div className="bg-white border border-neutral-200 rounded-2xl p-6 space-y-3">
+              <h3 className="text-xs font-bold tracking-wider uppercase text-neutral-400">Pipeline Overview</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4">
+                  <span className="text-xs font-bold text-black block mb-1">1. Intent Parsing</span>
+                  <p className="text-[11px] text-neutral-500 leading-relaxed">Your prompt is scanned for integrations (WhatsApp, Telegram, Stripe, databases, etc.) and a clarification matrix is built if credentials are needed.</p>
+                </div>
+                <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4">
+                  <span className="text-xs font-bold text-black block mb-1">2. Clarification Loop</span>
+                  <p className="text-[11px] text-neutral-500 leading-relaxed">If integrations are detected, the engine asks targeted questions before compiling — preventing broken or insecure agent code.</p>
+                </div>
+                <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4">
+                  <span className="text-xs font-bold text-black block mb-1">3. Code Generation</span>
+                  <p className="text-[11px] text-neutral-500 leading-relaxed">Gemini generates a runnable Node.js script with async logic, try/catch error handling, and environment-variable-based credentials.</p>
+                </div>
+                <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4">
+                  <span className="text-xs font-bold text-black block mb-1">4. Telemetry Output</span>
+                  <p className="text-[11px] text-neutral-500 leading-relaxed">Execution logs, required environment variables, and the full generated script are streamed back to your dashboard.</p>
+                </div>
               </div>
+            </div>
+
+            <div className="bg-white border border-neutral-200 rounded-2xl p-6 space-y-4">
+              <h3 className="text-xs font-bold tracking-wider uppercase text-neutral-400">Server Endpoint</h3>
+              <p className="text-xs text-neutral-500 leading-relaxed">
+                Agent generation runs through a single internal route. POST your prompt and it returns either a clarification request or the compiled agent payload.
+              </p>
+              <div className="bg-neutral-900 text-neutral-200 p-5 rounded-xl font-mono text-xs overflow-x-auto shadow-inner leading-relaxed">
+                <span className="text-slate-400">// POST /api/generate-agent</span><br/>
+                <span className="text-emerald-400">const</span> res = <span className="text-emerald-400">await</span> fetch(<span className="text-amber-300">'/api/generate-agent'</span>, &#123;<br/>
+                &nbsp;&nbsp;method: <span className="text-amber-300">'POST'</span>,<br/>
+                &nbsp;&nbsp;headers: &#123; <span className="text-amber-300">'content-type'</span>: <span className="text-amber-300">'application/json'</span> &#125;,<br/>
+                &nbsp;&nbsp;body: JSON.stringify(&#123; prompt: <span className="text-amber-300">'Poll Stripe every hour, alert Slack on failed payments'</span> &#125;)<br/>
+                &#125;);<br/><br/>
+                <span className="text-slate-400">// Response (if integrations need clarification):</span><br/>
+                &#123; needsClarification: <span className="text-pink-400">true</span>, questions: [ ... ] &#125;<br/><br/>
+                <span className="text-slate-400">// Response (compiled agent):</span><br/>
+                &#123; agentName, schedule, targetSystems, envVarsNeeded, code, telemetryLogs &#125;
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+              <p className="text-xs font-bold text-amber-800 mb-1">Engine Notes</p>
+              <p className="text-[11px] text-amber-700 leading-relaxed">The underlying model is Google Gemini (gemini-2.5-flash-lite). Credentials are never stored server-side — agents reference process.env variables that you configure yourself once you deploy the generated script.</p>
             </div>
           </div>
         )}

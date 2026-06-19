@@ -23,7 +23,6 @@ export async function POST(req: NextRequest) {
 
   const detectedIntegrations = detectIntegrations(prompt);
 
-  // Build clarification questions for detected integrations
   const clarificationMap: Record<string, string> = {
     whatsapp: 'For WhatsApp: Will you use Twilio, WhatsApp Business API, or another provider? Do you have an API key/phone number already?',
     telegram: 'For Telegram: Do you have a Bot Token from @BotFather? Should the agent send messages, receive them, or both?',
@@ -60,7 +59,6 @@ export async function POST(req: NextRequest) {
     gemini: 'For Gemini: Do you have a Gemini API key from Google AI Studio?',
   };
 
-  // If there are integrations detected and no answers yet, return questions
   if (detectedIntegrations.length > 0 && !answers) {
     const questions = detectedIntegrations
       .map(integration => clarificationMap[integration])
@@ -75,22 +73,25 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Build full prompt with answers if provided
   const answersContext = answers
     ? `\n\nUser has provided the following clarification answers:\n${answers}`
     : '';
 
-  let data: any;
-  try {
-    const response = await fetch(
-       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b-001:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `You are an autonomous backend agent code generator.
+  const models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash'];
+  let data: any = null;
+  let lastError: any = null;
+
+  for (const model of models) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: `You are an autonomous backend agent code generator.
 
 The user wants to build this agent: "${prompt}"${answersContext}
 
@@ -111,18 +112,21 @@ Respond ONLY in this exact JSON format with no markdown, no backticks, no extra 
     "[RUNTIME] Agent deployed and executing"
   ]
 }`
+              }]
             }]
-          }]
-        }),
-      }
-    );
-    data = await response.json();
-  } catch (fetchErr: any) {
-    return NextResponse.json({ error: 'Fetch to Gemini failed: ' + fetchErr.message }, { status: 500 });
+          }),
+        }
+      );
+      data = await response.json();
+      if (!data.error) break;
+      lastError = data.error;
+    } catch (fetchErr: any) {
+      lastError = fetchErr.message;
+    }
   }
 
-  if (data.error) {
-    return NextResponse.json({ error: 'Gemini API error: ' + JSON.stringify(data.error) }, { status: 500 });
+  if (!data || data.error) {
+    return NextResponse.json({ error: 'Gemini API error: ' + JSON.stringify(lastError) }, { status: 500 });
   }
 
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
