@@ -20,17 +20,12 @@ export default function KinetixDashboard() {
   const [envVarValues, setEnvVarValues] = useState<Record<string, string>>({});
   const [finalizedResult, setFinalizedResult] = useState<any>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [activePid, setActivePid] = useState<number | null>(null);
 
   const { credits, deductCredits } = useKinetix();
 
   const handleFinalizeAgent = async () => {
     if (!agentResult?.code) return;
-
-    const missing = (agentResult.envVarsNeeded || []).filter((k: string) => !envVarValues[k]?.trim());
-    if (missing.length > 0) {
-      alert('Please fill in all credential fields before finalizing: ' + missing.join(', '));
-      return;
-    }
 
     setIsFinalizing(true);
     setFinalizedResult(null);
@@ -61,7 +56,28 @@ export default function KinetixDashboard() {
         return;
       }
 
+      // 1. Save the direct server execution payload response
       setFinalizedResult(data);
+      
+      // 2. Map the active system PID string explicitly to change the live banner status
+      if (data.pid) {
+        setActivePid(data.pid);
+      }
+      
+      // 3. FORCE RE-RENDER OVERRIDE: Re-create the object reference cleanly 
+      // so React registers the new modified code and merges the backend terminal launch logs
+      setAgentResult((prev: any) => {
+        const updatedLogs = data.telemetryLogs 
+          ? [...(prev?.telemetryLogs || []), ...data.telemetryLogs]
+          : (prev?.telemetryLogs || []);
+
+        return {
+          ...prev,
+          code: data.finalCode || prev?.code || '', // This forces the code view window to instantly refresh
+          telemetryLogs: updatedLogs
+        };
+      });
+
     } catch (err: any) {
       alert('Network error during finalize: ' + err.message);
     } finally {
@@ -84,6 +100,7 @@ export default function KinetixDashboard() {
       setEnvVarValues({});
       setGenerationStep('generating');
       setFinalizedResult(null);
+      setActivePid(null);
 
       try {
         const res = await fetch('/api/generate-agent', {
@@ -192,7 +209,7 @@ export default function KinetixDashboard() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => { setCurrentTab(tab.id as any); setGenerationStep('idle'); setAgentResult(null); setAwaitingClarification(false); setClarificationQuestions([]); setClarificationAnswers(''); setEnvVarValues({}); setFinalizedResult(null); }}
+                onClick={() => { setCurrentTab(tab.id as any); setGenerationStep('idle'); setAgentResult(null); setAwaitingClarification(false); setClarificationQuestions([]); setClarificationAnswers(''); setEnvVarValues({}); setFinalizedResult(null); setActivePid(null); }}
                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   currentTab === tab.id
                     ? 'bg-neutral-100 text-black shadow-sm font-semibold'
@@ -381,14 +398,14 @@ export default function KinetixDashboard() {
           <div className="max-w-4xl space-y-8">
             <div>
               <h2 className="text-2xl font-black tracking-tight text-black">Autonomous Agent Constructor</h2>
-              <p className="text-xs text-neutral-400">Instantiate long-running script processes capable of processing file matrix logic, scheduling tasks, and communicating with web systems.</p>
+              <p className="text-xs text-neutral-400">Instantiate long-running script processes capable of handling logic loops on local cloud paths seamlessly.</p>
             </div>
 
             <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
               <textarea
                 value={agentPrompt}
                 onChange={(e) => { setAgentPrompt(e.target.value); setAwaitingClarification(false); setClarificationQuestions([]); setClarificationAnswers(''); }}
-                placeholder="Specify target task execution flow parameters (e.g., Scan local server file logs every 60 mins, extract metrics data, post summary to internal api)..."
+                placeholder="Specify task execution flows..."
                 className="w-full h-32 p-4 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none font-mono"
               />
               <div className="flex justify-between items-center">
@@ -405,28 +422,21 @@ export default function KinetixDashboard() {
 
             {awaitingClarification && clarificationQuestions.length > 0 && (
               <div className="bg-white border border-amber-200 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
-                  <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
-                  <span className="text-xs font-bold text-black tracking-wider uppercase">Integration Configuration Required</span>
-                </div>
-                <p className="text-xs text-neutral-500">The engine detected external integrations in your prompt. Please answer the following before compilation proceeds:</p>
+                <p className="text-xs font-bold text-black tracking-wider uppercase">Integration Configuration Required</p>
                 <div className="space-y-3">
                   {clarificationQuestions.map((q, i) => (
                     <div key={i} className="bg-neutral-50 border border-neutral-200 rounded-xl p-3">
-                      <p className="text-xs font-semibold text-black mb-1">{i + 1}. {q}</p>
+                      <p className="text-xs font-semibold text-black">{i + 1}. {q}</p>
                     </div>
                   ))}
                 </div>
                 <textarea
                   value={clarificationAnswers}
                   onChange={(e) => setClarificationAnswers(e.target.value)}
-                  placeholder="Type your answers here, numbered to match the questions above..."
-                  className="w-full h-28 p-4 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none font-mono"
+                  placeholder="Type your answers here..."
+                  className="w-full h-28 p-4 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none"
                 />
-                <div className="flex gap-3">
-                  <button onClick={handleSubmitClarification} className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all">Submit & Compile Agent</button>
-                  <button onClick={() => { setAwaitingClarification(false); setClarificationQuestions([]); setClarificationAnswers(''); handleStartGeneration(agentPrompt, 'agent', 'skip'); }} className="bg-neutral-100 text-neutral-500 px-6 py-2 rounded-xl text-xs font-bold hover:bg-neutral-200 transition-all">Skip & Use Placeholders</button>
-                </div>
+                <button onClick={handleSubmitClarification} className="bg-black text-white px-6 py-2 rounded-xl text-xs font-bold">Submit & Compile Agent</button>
               </div>
             )}
 
@@ -434,120 +444,83 @@ export default function KinetixDashboard() {
               <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
                 <div className="flex justify-between items-center border-b border-neutral-100 pb-3">
                   <span className="text-xs font-bold text-black tracking-wider uppercase">Autonomous Agent Telemetry Monitor</span>
-                  <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${generationStep === 'generating' ? 'bg-amber-100 text-amber-700 animate-pulse' : 'bg-emerald-100 text-emerald-700'}`}>
-                    {generationStep === 'generating' ? 'COMPILING AGENT BRAIN' : 'AGENT EXECUTING WORKFLOW'}
+                  <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${activePid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {activePid ? `LIVE CONTAINER RUNNING (PID: ${activePid})` : 'AWAITING FINAL PARAMETERS'}
                   </span>
                 </div>
-                {generationStep === 'generating' ? (
-                  <div className="space-y-2 font-mono text-xs text-neutral-400 py-4">
-                    <p>[INFO] Parsing system prompt matrix guardrails...</p>
-                    <p>[ORCHESTRATION] Initializing event listener loops and function calls...</p>
-                    <p>[CONNECT] Establishing data streaming tunnels to central orchestration server...</p>
+                
+                <div className="space-y-4">
+                  {/* LIVE TERMINAL CONSOLE LOGS */}
+                  <div className="w-full h-48 bg-neutral-900 text-emerald-400 p-4 rounded-xl font-mono text-xs space-y-1.5 shadow-inner overflow-y-auto">
+                    <p className="text-neutral-500">// Terminal Execution Pipeline Feed</p>
+                    {agentResult?.telemetryLogs?.map((log: string, i: number) => (
+                      <p key={i}>{log}</p>
+                    ))}
+                    {agentResult?.schedule && <p>[CRON] Schedule: {agentResult.schedule}</p>}
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="w-full h-48 bg-neutral-900 text-emerald-400 p-4 rounded-xl font-mono text-xs space-y-1.5 shadow-inner overflow-y-auto">
-                      <p className="text-neutral-500">// Real-time execution logs active</p>
-                      {agentResult?.telemetryLogs?.map((log: string, i: number) => (
-                        <p key={i}>{log}</p>
-                      ))}
-                      {agentResult?.schedule && <p>[CRON] Schedule: {agentResult.schedule}</p>}
-                      {agentResult?.targetSystems && <p>[CONNECT] Target systems: {agentResult.targetSystems.join(', ')}</p>}
-                    </div>
 
-                    {agentResult?.envVarsNeeded?.length > 0 && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
-                        <div>
-                          <p className="text-xs font-bold text-amber-800 mb-1">Environment Variables Required</p>
-                          <div className="flex flex-wrap gap-2 mb-2">
-                            {agentResult.envVarsNeeded.map((v: string, i: number) => (
-                              <span key={i} className="bg-amber-100 text-amber-700 text-[11px] font-mono px-2 py-0.5 rounded">{v}</span>
-                            ))}
+                  {agentResult?.envVarsNeeded?.length > 0 && !finalizedResult && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+                      <p className="text-xs font-bold text-amber-800">Environment Variables Required</p>
+                      <div className="space-y-2">
+                        {agentResult.envVarsNeeded.map((key: string) => (
+                          <div key={key}>
+                            <label className="text-[10px] font-mono text-amber-700 block mb-1">{key}</label>
+                            <input
+                              type="text"
+                              value={envVarValues[key] || ''}
+                              onChange={(e) => setEnvVarValues(prev => ({ ...prev, [key]: e.target.value }))}
+                              placeholder={`Paste your ${key} here`}
+                              className="w-full p-2.5 bg-white border border-amber-200 rounded-lg text-xs font-mono"
+                            />
                           </div>
-                          <p className="text-[10px] text-amber-600">Enter your real credentials below. They stay in your browser only — never sent to our servers.</p>
-                        </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                        <div className="space-y-2 pt-2 border-t border-amber-200">
-                          {agentResult.envVarsNeeded.map((key: string) => (
-                            <div key={key}>
-                              <label className="text-[10px] font-mono text-amber-700 block mb-1">{key}</label>
-                              <input
-                                type="text"
-                                value={envVarValues[key] || ''}
-                                onChange={(e) => setEnvVarValues(prev => ({ ...prev, [key]: e.target.value }))}
-                                placeholder={`Paste your ${key} here`}
-                                className="w-full p-2.5 bg-white border border-amber-200 rounded-lg text-xs font-mono focus:outline-none focus:border-amber-400"
-                              />
-                            </div>
+                  {/* INJECT RUN TRIGGER BUTTON */}
+                  {!activePid && (
+                    <div className="flex justify-end pt-1">
+                      <button
+                        onClick={handleFinalizeAgent}
+                        disabled={isFinalizing}
+                        className="w-full bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm"
+                      >
+                        {isFinalizing ? 'Deploying and Spawning Process Threads...' : 'Inject Credentials & Start Agent execution'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* RUN INSTRUCTIONS DISPLAY BANNER */}
+                  {finalizedResult && (
+                    <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 text-xs font-mono">
+                      <p className="font-bold mb-1">[RUNNING] Script mounted directly into micro-isolated server background.</p>
+                      {finalizedResult.runInstructions && (
+                        <div className="mt-2 text-[11px] text-emerald-900/80 list-disc list-inside space-y-1 bg-white/40 p-2.5 rounded-lg border border-emerald-200/40">
+                          {finalizedResult.runInstructions.map((step: string, index: number) => (
+                            <p key={index}>✓ {step}</p>
                           ))}
                         </div>
-                      </div>
-                    )}
-
-                    {/* NEW SUBMIT ACTION CORES FOR ENVIRONMENT VALUE UPDATE ROUTING */}
-                    {agentResult?.envVarsNeeded?.length > 0 && (
-                      <div className="flex justify-end pt-1">
-                        <button
-                          onClick={handleFinalizeAgent}
-                          disabled={isFinalizing}
-                          className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:bg-neutral-300"
-                        >
-                          {isFinalizing ? (
-                            <>
-                              <span className="h-3 w-3 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
-                              Replacing Environment Tunnels...
-                            </>
-                          ) : (
-                            'Inject Credentials & Finalize Agent'
-                          )}
-                        </button>
-                      </div>
-                    )}
-
-                    {/* If finalization succeeded, display the updated runtime payload code or message */}
-                    {finalizedResult && (
-                      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 text-xs font-mono">
-                        <p className="font-bold mb-1">[SUCCESS] Target Environment Variables Injected Securely.</p>
-                        <p className="text-neutral-600 mb-2">The underlying agent configuration wrapper has been updated successfully with live production parameters.</p>
-                        {finalizedResult.runInstructions && (
-                          <div className="mt-2 text-[11px] text-emerald-900/80 list-disc list-inside space-y-1 bg-white/40 p-2.5 rounded-lg border border-emerald-200/40">
-                            <span className="font-bold block text-[10px] uppercase tracking-wider text-emerald-800 mb-1">Execution Steps:</span>
-                            {finalizedResult.runInstructions.map((step: string, index: number) => (
-                              <p key={index}>{index + 1}. {step}</p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {(finalizedResult?.finalCode || agentResult?.code) && (
-                      <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-bold text-black">
-                            {finalizedResult?.finalCode ? `Finalized Run Script: ${agentResult.agentName}` : `Generated Agent: ${agentResult.agentName}`}
-                          </span>
-                          <div className="flex gap-2">
-                            {agentResult.envVarsNeeded?.length > 0 && (
-                              <button onClick={downloadEnvFile} className="text-xs bg-neutral-200 text-neutral-700 px-3 py-1 rounded-lg hover:bg-neutral-300 transition-all">Download .env</button>
-                            )}
-                            <button onClick={() => navigator.clipboard.writeText(finalizedResult?.finalCode || agentResult.code)} className="text-xs bg-black text-white px-3 py-1 rounded-lg hover:bg-neutral-800 transition-all">Copy Code</button>
-                          </div>
-                        </div>
-                        <pre className="text-[11px] text-neutral-600 overflow-x-auto whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">
-                          {finalizedResult?.finalCode || agentResult.code}
-                        </pre>
-                      </div>
-                    )}
-
-                    <div className="flex gap-4 items-center justify-between bg-neutral-50 p-4 rounded-xl border border-neutral-200">
-                      <div>
-                        <span className="text-xs font-bold text-black block">Active Agent Operational Status</span>
-                        <span className="text-[11px] text-neutral-400 block">Agent processes run persistently in the background.</span>
-                      </div>
-                      <button onClick={() => alert(`Agent stream successfully online. Telemetry payload connection secure.`)} className="bg-neutral-900 hover:bg-neutral-800 text-white px-5 py-2 rounded-lg text-xs font-bold transition-all">Ping Agent Daemon</button>
+                      )}
                     </div>
-                  </div>
-                )}
+                  )}
+
+                  {/* UPDATED ACTIVE CODE CONTAINER ARCHIVE */}
+                  {agentResult?.code && (
+                    <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-black">
+                          {activePid ? `Executing Process Code: ${agentResult.agentName}` : `Staged Configuration Script`}
+                        </span>
+                        <button onClick={() => navigator.clipboard.writeText(agentResult.code)} className="text-xs bg-black text-white px-3 py-1 rounded-lg">Copy Code</button>
+                      </div>
+                      <pre className="text-[11px] text-neutral-600 overflow-x-auto whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">
+                        {agentResult.code}
+                      </pre>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -568,7 +541,6 @@ export default function KinetixDashboard() {
                   <ul className="text-xs text-neutral-400 group-hover:text-neutral-500 transition-colors duration-200 space-y-2.5">
                     <li>• 1,000 baseline operation credits</li>
                     <li>• Maximum 3 live website deployments</li>
-                    <li>• SaaS & Agent modes restricted to Sandbox Prototype only</li>
                   </ul>
                 </div>
               </div>
